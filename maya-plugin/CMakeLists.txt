@@ -48,8 +48,14 @@ set( EXT_DEPS
 	Foundation
 )
 
+if (APPLE)
+    add_definitions(-DOSMac_)
+endif()
 
 
 add_library(${PROJECT_NAME} SHARED ${MAIN_SOURCE})
+if(APPLE)
+    set_target_properties(${PROJECT_NAME} PROPERTIES SUFFIX ".bundle")
+    endif()
 add_dependencies(${PROJECT_NAME} ${EXT_DEPS})
 target_link_libraries(${PROJECT_NAME} ${EXT_DEPS})

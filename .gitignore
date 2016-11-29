@@ -3,3 +3,4 @@
 *.so
 .ycm_extra_conf.py*
 build/
+.DS_Store
