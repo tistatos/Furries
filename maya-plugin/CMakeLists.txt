@@ -39,6 +39,7 @@ endif()
 
 add_subdirectory(${PROJECT_CXX_DIR})
 include_directories(${MAYA_INCLUDE_DIR})
+include_directories(${PROJECT_INCLUDE_DIR})
 link_directories(${MAYA_LIB_DIR})
 
 
@@ -52,4 +53,3 @@ set( EXT_DEPS
 add_library(${PROJECT_NAME} SHARED ${MAIN_SOURCE})
 add_dependencies(${PROJECT_NAME} ${EXT_DEPS})
 target_link_libraries(${PROJECT_NAME} ${EXT_DEPS})
-

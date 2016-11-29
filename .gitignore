@@ -1,4 +1,5 @@
 *.dylib
 *.os
 *.so
+.ycm_extra_conf.py*
 build/
