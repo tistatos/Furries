@@ -22,8 +22,13 @@ public:
   static MStatus initialize();
 
 public:
-  static MObject input;
+  static MObject timeInput;
+  //static MObject stiffnessInput;
+  //static MObject gravityInput;
+  static MObject meshInput;
   static MObject output;
+  static MObject outputSpringPositions;
+  //static MObject outputSpringAngles;
   static MTypeId id;
 };
 
