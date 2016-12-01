@@ -158,9 +158,11 @@ MStatus FurriesSpringNode::compute(const MPlug& plug, MDataBlock& data) {
     for(unsigned int i = 0; i < springCount; i++) {
 
       MFloatVector inAngle;
+      bool foundAngle = false;
       if(inputAngles.elementCount() > 0 && inputAngles.elementIndex() == i) {
         inAngle = inputAngles.inputValue().asDouble3();
         inputAngles.next();
+        foundAngle = true;
       }
 
       MDataHandle outangle  = angleBuilder.addLast();
@@ -176,7 +178,7 @@ MStatus FurriesSpringNode::compute(const MPlug& plug, MDataBlock& data) {
         angles *= 180/3.14;
         outangle.set3Double(angles.x, angles.y, angles.z);
       }
-      else {
+      else if(foundAngle) {
         outangle.set3Double(inAngle.x, inAngle.y, inAngle.z+sin(currentTime.value()*0.1));
       }
     }
