@@ -23,10 +23,13 @@ public:
 
 public:
   static MString name;
+
   static MObject timeInput;
   //static MObject stiffnessInput;
   //static MObject gravityInput;
   static MObject meshInput;
+  static MObject matrixInput;
+
   static MObject output;
   static MObject outputSpringPositions;
   //static MObject outputSpringAngles;
