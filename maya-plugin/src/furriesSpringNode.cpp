@@ -16,6 +16,10 @@
 
 #include <maya/MDoubleArray.h>
 #include <maya/MMatrix.h>
+#include <maya/MTime.h>
+#include <maya/MFloatMatrix.h>
+#include <maya/MQuaternion.h>
+#include <maya/MEulerRotation.h>
 #include <maya/MFloatPointArray.h>
 #include <maya/MFloatVectorArray.h>
 #include <maya/MArrayDataBuilder.h>
@@ -26,15 +30,16 @@
 
 MString FurriesSpringNode::name = "furrySpringNode";
 MTypeId FurriesSpringNode::id(0x00001);
+
 MObject FurriesSpringNode::meshInput;
 MObject FurriesSpringNode::matrixInput;
 MObject FurriesSpringNode::timeInput;
-//MObject FurriesSpringNode::gravityInput;
-//MObject FurriesSpringNode::stiffnessInput;
+MObject FurriesSpringNode::gravityInput;
+MObject FurriesSpringNode::stiffnessInput;
+MObject FurriesSpringNode::springAnglesInput;
 
-MObject FurriesSpringNode::output;
 MObject FurriesSpringNode::outputSpringPositions;
-//MObject FurriesSpringNode::outputSpringAngles;
+MObject FurriesSpringNode::outputSpringAngles;
 
 FurriesSpringNode::FurriesSpringNode() {}
 FurriesSpringNode::~FurriesSpringNode() {}
@@ -50,52 +55,61 @@ MStatus FurriesSpringNode::initialize() {
   FurriesSpringNode::meshInput = typedAttr.create("inputMesh", "in",
   MFnData::kMesh, &status);
   typedAttr.setWritable(true);
+  addAttribute(meshInput);
 
   FurriesSpringNode::matrixInput = matrixAttr.create("inputMatrix", "mat");
   matrixAttr.setWritable(true);
+  addAttribute(matrixInput);
 
-  //FurriesSpringNode::stiffnessInput = numericAttr.create("springStiffness", "stiff", MFnNumericData::kFloat, 1.0);
-  //FurriesSpringNode::gravityInput = numericAttr.create("gravity", "grav", MFnNumericData::kFloat, 9.8);
+  FurriesSpringNode::stiffnessInput = numericAttr.create("springStiffness", "stiff", MFnNumericData::kFloat, 1.0);
+  numericAttr.setWritable(true);
+  addAttribute(stiffnessInput);
+
+  FurriesSpringNode::gravityInput = numericAttr.create("gravity", "grav", MFnNumericData::kFloat, 9.8);
+  numericAttr.setWritable(true);
+  addAttribute(gravityInput);
+
   FurriesSpringNode::timeInput = unitAttr.create("inputTime", "time",
       MFnUnitAttribute::kTime);
-  //numericAttr.setWritable(true);
+  unitAttr.setWritable(true);
+  addAttribute(timeInput);
+
+  FurriesSpringNode::springAnglesInput = numericAttr.create("inputSpringAngles", "anglesIn", MFnNumericData::k3Double);
+  numericAttr.setWritable(true);
+  numericAttr.setArray(true);
+  numericAttr.setUsesArrayDataBuilder(true);
+  addAttribute(springAnglesInput);
 
   // Output
-  FurriesSpringNode::output = numericAttr.create("output", "out", MFnNumericData::kFloat, 0.0);
+  FurriesSpringNode::outputSpringAngles = numericAttr.create("springAngles", "angles", MFnNumericData::k3Double);
   numericAttr.setWritable(false);
-
-  //FurriesSpringNode::outputSpringAngles = typedAttr.create("springAngles", "angles", MFnData::kVectorArray);
-  //typedAttr.setWritable(false);
-  //typedAttr.setArray(true);
-  //typedAttr.setUsesArrayDataBuilder(true);
-  FurriesSpringNode::outputSpringPositions = numericAttr.create("springPositions", "positions", MFnNumericData::k3Double, (0.0, 0.0, 0.0));
   numericAttr.setReadable(true);
   numericAttr.setArray(true);
   numericAttr.setUsesArrayDataBuilder(true);
+  addAttribute(outputSpringAngles);
 
-  //Add attributes
-  // Inputs
-  //addAttribute(stiffnessInput);
-  //addAttribute(gravityInput);
-  addAttribute(timeInput);
-  addAttribute(meshInput);
-  addAttribute(matrixInput);
-
-  // Outputs
-  addAttribute(output);
+  FurriesSpringNode::outputSpringPositions = numericAttr.create("springPositions", "positions", MFnNumericData::k3Double);
+  numericAttr.setWritable(false);
+  numericAttr.setReadable(true);
+  numericAttr.setArray(true);
+  numericAttr.setUsesArrayDataBuilder(true);
   addAttribute(outputSpringPositions);
-  //addAttribute(outputSpringAngles);
 
   //Affecting attributes
-  status = attributeAffects(meshInput, output);
-  //status = attributeAffects(meshInput, outputSpringAngles);
+  status = attributeAffects(meshInput, outputSpringAngles);
   status = attributeAffects(meshInput, outputSpringPositions);
 
   status = attributeAffects(matrixInput, outputSpringPositions);
+  status = attributeAffects(matrixInput, outputSpringAngles);
 
-  status = attributeAffects(timeInput, output);
-  //status = attributeAffects(timeInput, outputSpringAngles);
+  status = attributeAffects(timeInput, outputSpringAngles);
   status = attributeAffects(timeInput, outputSpringPositions);
+
+  status = attributeAffects(stiffnessInput, outputSpringAngles);
+  status = attributeAffects(stiffnessInput, outputSpringPositions);
+
+  status = attributeAffects(gravityInput, outputSpringAngles);
+  status = attributeAffects(gravityInput, outputSpringPositions);
 
   return MStatus::kSuccess;
 }
@@ -103,16 +117,20 @@ MStatus FurriesSpringNode::initialize() {
 MStatus FurriesSpringNode::compute(const MPlug& plug, MDataBlock& data) {
   MStatus status = MStatus::kSuccess;
 
-  if(plug == outputSpringPositions) {
+  if(plug == outputSpringPositions || plug == outputSpringAngles) {
     MDataHandle inputMeshHandle = data.inputValue(meshInput, &status);
     MObject inputMeshObject(inputMeshHandle.asMesh());
     MFnMesh inputMesh(inputMeshObject);
 
+    MTime currentTime = data.inputValue(timeInput, &status).asTime();
+
     MTransformationMatrix matrix = data.inputValue(matrixInput, &status).asMatrix();
 
     MFloatPointArray vertices;
+    MFloatVectorArray normals;
     inputMesh.getPoints(vertices, MSpace::kWorld);
     unsigned int springCount = vertices.length();
+    inputMesh.getVertexNormals(false, normals, MSpace::kWorld);
 
     MArrayDataHandle outputPositions = data.outputArrayValue( FurriesSpringNode::outputSpringPositions);
 
@@ -130,25 +148,43 @@ MStatus FurriesSpringNode::compute(const MPlug& plug, MDataBlock& data) {
       outPoint.set3Double(point.x, point.y, point.z);
     }
 
+
+    //angle calculations goes here
+    MArrayDataHandle outputAngles = data.outputArrayValue( FurriesSpringNode::outputSpringAngles);
+    MArrayDataBuilder angleBuilder(FurriesSpringNode::outputSpringAngles, springCount);
+
+    MArrayDataHandle inputAngles = data.inputValue( springAnglesInput);
+
+    for(unsigned int i = 0; i < springCount; i++) {
+
+      MFloatVector inAngle;
+      bool foundAngle = false;
+      if(inputAngles.elementCount() > 0 && inputAngles.elementIndex() == i) {
+        inAngle = inputAngles.inputValue().asDouble3();
+        inputAngles.next();
+        foundAngle = true;
+      }
+
+      MDataHandle outangle  = angleBuilder.addLast();
+      MFloatVector normal = normals[i];
+      MFloatVector up(0, 1.0, 0);
+
+      MMatrix m = matrix.asRotateMatrix();
+      normal = MPoint(normal) * m;
+      MQuaternion q(up, normal);
+
+      if(currentTime.value() <= 1) {
+        MFloatVector angles = q.asEulerRotation().asVector();
+        angles *= 180/3.14;
+        outangle.set3Double(angles.x, angles.y, angles.z);
+      }
+      else if(foundAngle) {
+        outangle.set3Double(inAngle.x, inAngle.y, inAngle.z+sin(currentTime.value()*0.1));
+      }
+    }
+
     outputPositions.set(positionBuilder);
-    data.setClean(plug);
-  }
-
-  if(plug == output) {
-    MFloatPointArray vertices;
-    MFloatVectorArray normals;
-
-    MDataHandle inputMeshHandle = data.inputValue(meshInput, &status);
-    MObject inputMeshObject( inputMeshHandle.asMesh() );
-    MFnMesh inputMesh(inputMeshObject);
-
-    //MDataHandle inputTimeHandle = data.inputValue(timeInput, &status);
-
-    inputMesh.getPoints(vertices, MSpace::kWorld);
-    inputMesh.getVertexNormals(false, normals, MSpace::kWorld);
-
-    MDataHandle outputHandle = data.outputValue( FurriesSpringNode::output);
-    outputHandle.setFloat(vertices.length());
+    outputAngles.set(angleBuilder);
     data.setClean(plug);
   }
 

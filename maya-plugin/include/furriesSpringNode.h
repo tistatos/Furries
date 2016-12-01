@@ -25,14 +25,14 @@ public:
   static MString name;
 
   static MObject timeInput;
-  //static MObject stiffnessInput;
-  //static MObject gravityInput;
+  static MObject stiffnessInput;
+  static MObject gravityInput;
   static MObject meshInput;
+  static MObject springAnglesInput;
   static MObject matrixInput;
 
-  static MObject output;
   static MObject outputSpringPositions;
-  //static MObject outputSpringAngles;
+  static MObject outputSpringAngles;
   static MTypeId id;
 };
 
