@@ -28,6 +28,7 @@ public:
   static MObject stiffnessInput;
   static MObject gravityInput;
   static MObject meshInput;
+  static MObject springAnglesInput;
   static MObject matrixInput;
 
   static MObject outputSpringPositions;

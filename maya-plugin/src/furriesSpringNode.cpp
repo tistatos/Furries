@@ -16,6 +16,7 @@
 
 #include <maya/MDoubleArray.h>
 #include <maya/MMatrix.h>
+#include <maya/MTime.h>
 #include <maya/MFloatMatrix.h>
 #include <maya/MQuaternion.h>
 #include <maya/MEulerRotation.h>
@@ -35,6 +36,7 @@ MObject FurriesSpringNode::matrixInput;
 MObject FurriesSpringNode::timeInput;
 MObject FurriesSpringNode::gravityInput;
 MObject FurriesSpringNode::stiffnessInput;
+MObject FurriesSpringNode::springAnglesInput;
 
 MObject FurriesSpringNode::outputSpringPositions;
 MObject FurriesSpringNode::outputSpringAngles;
@@ -53,16 +55,30 @@ MStatus FurriesSpringNode::initialize() {
   FurriesSpringNode::meshInput = typedAttr.create("inputMesh", "in",
   MFnData::kMesh, &status);
   typedAttr.setWritable(true);
+  addAttribute(meshInput);
 
   FurriesSpringNode::matrixInput = matrixAttr.create("inputMatrix", "mat");
   matrixAttr.setWritable(true);
+  addAttribute(matrixInput);
 
   FurriesSpringNode::stiffnessInput = numericAttr.create("springStiffness", "stiff", MFnNumericData::kFloat, 1.0);
+  numericAttr.setWritable(true);
+  addAttribute(stiffnessInput);
+
   FurriesSpringNode::gravityInput = numericAttr.create("gravity", "grav", MFnNumericData::kFloat, 9.8);
   numericAttr.setWritable(true);
+  addAttribute(gravityInput);
 
   FurriesSpringNode::timeInput = unitAttr.create("inputTime", "time",
       MFnUnitAttribute::kTime);
+  unitAttr.setWritable(true);
+  addAttribute(timeInput);
+
+  FurriesSpringNode::springAnglesInput = numericAttr.create("inputSpringAngles", "anglesIn", MFnNumericData::k3Double);
+  numericAttr.setWritable(true);
+  numericAttr.setArray(true);
+  numericAttr.setUsesArrayDataBuilder(true);
+  addAttribute(springAnglesInput);
 
   // Output
   FurriesSpringNode::outputSpringAngles = numericAttr.create("springAngles", "angles", MFnNumericData::k3Double);
@@ -70,24 +86,14 @@ MStatus FurriesSpringNode::initialize() {
   numericAttr.setReadable(true);
   numericAttr.setArray(true);
   numericAttr.setUsesArrayDataBuilder(true);
+  addAttribute(outputSpringAngles);
 
-  FurriesSpringNode::outputSpringPositions = numericAttr.create("springPositions", "positions", MFnNumericData::k3Double, (0.0, 0.0, 0.0));
+  FurriesSpringNode::outputSpringPositions = numericAttr.create("springPositions", "positions", MFnNumericData::k3Double);
   numericAttr.setWritable(false);
   numericAttr.setReadable(true);
   numericAttr.setArray(true);
   numericAttr.setUsesArrayDataBuilder(true);
-
-  //Add attributes
-  // Inputs
-  addAttribute(stiffnessInput);
-  addAttribute(gravityInput);
-  addAttribute(timeInput);
-  addAttribute(meshInput);
-  addAttribute(matrixInput);
-
-  // Outputs
   addAttribute(outputSpringPositions);
-  addAttribute(outputSpringAngles);
 
   //Affecting attributes
   status = attributeAffects(meshInput, outputSpringAngles);
@@ -116,6 +122,8 @@ MStatus FurriesSpringNode::compute(const MPlug& plug, MDataBlock& data) {
     MObject inputMeshObject(inputMeshHandle.asMesh());
     MFnMesh inputMesh(inputMeshObject);
 
+    MTime currentTime = data.inputValue(timeInput, &status).asTime();
+
     MTransformationMatrix matrix = data.inputValue(matrixInput, &status).asMatrix();
 
     MFloatPointArray vertices;
@@ -143,22 +151,34 @@ MStatus FurriesSpringNode::compute(const MPlug& plug, MDataBlock& data) {
 
     //angle calculations goes here
     MArrayDataHandle outputAngles = data.outputArrayValue( FurriesSpringNode::outputSpringAngles);
-
     MArrayDataBuilder angleBuilder(FurriesSpringNode::outputSpringAngles, springCount);
+
+    MArrayDataHandle inputAngles = data.inputValue( springAnglesInput);
+
     for(unsigned int i = 0; i < springCount; i++) {
+
+      MFloatVector inAngle;
+      if(inputAngles.elementCount() > 0 && inputAngles.elementIndex() == i) {
+        inAngle = inputAngles.inputValue().asDouble3();
+        inputAngles.next();
+      }
+
       MDataHandle outangle  = angleBuilder.addLast();
       MFloatVector normal = normals[i];
-
       MFloatVector up(0, 1.0, 0);
 
       MMatrix m = matrix.asRotateMatrix();
       normal = MPoint(normal) * m;
-
       MQuaternion q(up, normal);
 
-      MFloatVector angles = q.asEulerRotation().asVector();
-      angles *= 180/3.14;
-      outangle.set3Double(angles.x, angles.y, angles.z);
+      if(currentTime.value() <= 1) {
+        MFloatVector angles = q.asEulerRotation().asVector();
+        angles *= 180/3.14;
+        outangle.set3Double(angles.x, angles.y, angles.z);
+      }
+      else {
+        outangle.set3Double(inAngle.x, inAngle.y, inAngle.z+sin(currentTime.value()*0.1));
+      }
     }
 
     outputPositions.set(positionBuilder);
