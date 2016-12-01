@@ -22,6 +22,7 @@ public:
   static MStatus initialize();
 
 public:
+  static MString name;
   static MObject timeInput;
   //static MObject stiffnessInput;
   //static MObject gravityInput;

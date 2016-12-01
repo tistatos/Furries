@@ -21,6 +21,7 @@
 #include "furriesSpringNode.h"
 
 
+MString FurriesSpringNode::name = "furrySpringNode";
 MTypeId FurriesSpringNode::id(0x00001);
 MObject FurriesSpringNode::meshInput;
 MObject FurriesSpringNode::timeInput;
