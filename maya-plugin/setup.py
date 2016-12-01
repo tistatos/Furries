@@ -12,12 +12,12 @@ cmds.connectAttr('pSphere1.worldMatrix', 'furrySpringNode1.inputMatrix')
 
 cgroup = cmds.group(em=True, n="cubegroup")
 
-for i in range(0,54):
+for i in range(0,400):
     points = []
     pointsPerCurve = 5
     
     # Coordinate System for strand
-    w = omn.MVector(0, 0.2, 0.2)
+    w = omn.MVector(0, 0.0, 0.2)
     n = omn.MVector(0,0, 1)
     z = omn.MVector(w)
     z.normalize()
@@ -37,9 +37,8 @@ for i in range(0,54):
         yi =  omn.MVector((lxy*math.sin(u*theta)/theta)*l*y)
         point = omn.MVector(zi+xi+yi)  
         points.append((point.x, point.y, point.z))
-        print point
     
 
     cmds.curve(p=points)
-    cmds.connectAttr(('furrySpringNode1.springPositions[%i]' % (i*7)), ('curve%i.translate' % (i+1)))
-    cmds.connectAttr(('furrySpringNode1.springAngles[%i]' % (i*7)), ('curve%i.rotate' % (i+1)))
+    cmds.connectAttr(('furrySpringNode1.springPositions[%i]' % (i)), ('curve%i.translate' % (i+1)))
+    cmds.connectAttr(('furrySpringNode1.springAngles[%i]' % (i)), ('curve%i.rotate' % (i+1)))
