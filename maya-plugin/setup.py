@@ -1,22 +1,25 @@
 import maya.cmds as cmds
-import maya.api.OpenMaya as om
+import maya.api.OpenMaya as omn
 import math
 
-cmds.unloadPlugin("libfurries");
-cmds.loadPlugin("libfurries");
-cmds.polySphere();
-cmds.createNode("furrySpringNode");
-cmds.connectAttr('pSphereShape1.outMesh', 'furrySpringNode1.inputMesh');
-cmds.connectAttr('time1.outTime', 'furrySpringNode1.inputTime');
+cmds.unloadPlugin("libfurries")
+cmds.loadPlugin("libfurries")
+cmds.polySphere()
+cmds.createNode("furrySpringNode")
+cmds.connectAttr('pSphereShape1.outMesh', 'furrySpringNode1.inputMesh')
+cmds.connectAttr('time1.outTime', 'furrySpringNode1.inputTime')
+cmds.connectAttr('pSphere1.worldMatrix', 'furrySpringNode1.inputMatrix')
+
+cgroup = cmds.group(em=True, n="cubegroup")
 
 for i in range(0,54):
     points = []
     pointsPerCurve = 5
     
     # Coordinate System for strand
-    w = om.MVector(0, 0.2, 0.2)
-    n = om.MVector(0,0, 1)
-    z = om.MVector(w)
+    w = omn.MVector(0, 0.2, 0.2)
+    n = omn.MVector(0,0, 1)
+    z = omn.MVector(w)
     z.normalize()
     # crossproduct
     x = (z ^ n)
@@ -29,13 +32,14 @@ for i in range(0,54):
     lxy = 0.2
     for j in range(0, pointsPerCurve):
         u = j/float(pointsPerCurve) 
-        zi = om.MVector(u*z)
-        xi = om.MVector(((1 - math.cos(theta*u))/theta) * x)
-        yi =  om.MVector((lxy*math.sin(u*theta)/theta)*l*y)
-        point = om.MVector(zi+xi+yi)  
+        zi = omn.MVector(u*z)
+        xi = omn.MVector(((1 - math.cos(theta*u))/theta) * x)
+        yi =  omn.MVector((lxy*math.sin(u*theta)/theta)*l*y)
+        point = omn.MVector(zi+xi+yi)  
         points.append((point.x, point.y, point.z))
         print point
     
 
-    cmds.curve(p=points);
-    cmds.connectAttr(('furrySpringNode1.springPositions[%i]' % (i*7)), ('curve%i.translate' % (i+1)));
+    cmds.curve(p=points)
+    cmds.connectAttr(('furrySpringNode1.springPositions[%i]' % (i*7)), ('curve%i.translate' % (i+1)))
+    cmds.connectAttr(('furrySpringNode1.springAngles[%i]' % (i*7)), ('curve%i.rotate' % (i+1)))
