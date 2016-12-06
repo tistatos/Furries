@@ -10,6 +10,7 @@
 
 #include <maya/MPxNode.h>
 #include <maya/MObject.h>
+#include <maya/MFloatPointArray.h>
 
 class FurriesSpringNode : public MPxNode{
 public:

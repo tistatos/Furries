@@ -15,9 +15,16 @@ public:
   static void* creator() { return new FurriesFurNode(); }
   static MStatus initialize();
 
-public:
-  static MString name;
 
+  static  MObject outputCurves;
+
+
+public:
+
+  static MStatus createHairCurve(MFloatPoint pos, MDataBlock& data);
+  
+  static MString name;
+  
   static MObject meshInput;
 
   static MObject output;
