@@ -18,14 +18,9 @@
 #include <maya/MFnNurbsCurve.h>
 #include <maya/MFnNurbsCurveData.h>
 #include <maya/MGlobal.h>
+#include <maya/MDagModifier.h>
 
 #include "furriesFurNode.h"
-
-#define PERRORfail(stat,msg) \
-                                                                if (!(stat)) { \
-                                                                        stat.perror((msg)); \
-                                                                        return (stat); \
-                                                                }
 
 MString FurriesFurNode::name = "furryFurNode";
 MTypeId FurriesFurNode::id(0x00002);
@@ -75,10 +70,10 @@ MStatus FurriesFurNode::initialize() {
 MStatus FurriesFurNode::createHairCurve(MFloatPoint pos, MDataBlock& data ){
   
   MStatus stat;
+
   int numCurves=1;
   MArrayDataHandle outputArray = data.outputArrayValue(outputCurves,&stat);
   MArrayDataBuilder builder(outputCurves, numCurves, &stat);
-  PERRORfail(stat, "BUILDER");
   for (int curveNum = 0; curveNum < numCurves; curveNum++) {
     MDataHandle outHandle = builder.addElement(curveNum);
 
@@ -100,7 +95,6 @@ MStatus FurriesFurNode::createHairCurve(MFloatPoint pos, MDataBlock& data ){
     cout << "Created curve with status" << stat << endl;
     outHandle.set(outCurveData);
 
-    PERRORfail(stat, "HEJ");
   }
   stat = outputArray.set(builder);
   return stat;
@@ -140,6 +134,11 @@ MStatus FurriesFurNode::compute(const MPlug& plug, MDataBlock& data) {
   MFloatVector p1p0;
   MFloatVector p2p3;
   MFloatVector p2p4;
+  MFloatVector p4p3;
+  MFloatVector resultVec;
+
+  MFloatPoint resultPoint;
+  MFloatPointArray pointArray;
 
   for (int i = 0; i < triCount.length(); i++) {
     pointList[triVert[3 * i]].get(ap0);
@@ -171,14 +170,16 @@ MStatus FurriesFurNode::compute(const MPlug& plug, MDataBlock& data) {
       p4 = p2p4 * (stepSize * i);
       for (int k = 0; (k*stepSize) < (p4-p3).length(); k++) {
         // Add nurbcurve at p3 + ((p4-p3).normalize() * k * stepSize)
+        p4p3 = (p4 - p3);
+        p4p3.normalize();
+        resultVec = p3 + p4p3 * k * stepSize;
+        pointArray.append(MFloatPoint(resultVec));
       }
     }
 
-    (stepSize / 2) + stepSize * i;
   }
 
 
-  MFloatPoint p00(0,1,0);
-  createHairCurve(p00, data);
+  createHairCurve(p0, data);
   return status;
 }
