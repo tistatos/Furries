@@ -122,21 +122,21 @@ MStatus FurriesSpringNode::initialize() {
 MStatus FurriesSpringNode::compute(const MPlug& plug, MDataBlock& data) {
   MStatus status = MStatus::kSuccess;
 
-  if(plug == outputSpringPositions || plug == outputSpringAngles) {
-    MDataHandle inputMeshHandle = data.inputValue(meshInput, &status);
-    MObject inputMeshObject(inputMeshHandle.asMesh());
-    MFnMesh inputMesh(inputMeshObject);
+  MDataHandle inputMeshHandle = data.inputValue(meshInput, &status);
+  MObject inputMeshObject(inputMeshHandle.asMesh());
+  MFnMesh inputMesh(inputMeshObject);
 
-    MTime currentTime = data.inputValue(timeInput, &status).asTime();
+  MTime currentTime = data.inputValue(timeInput, &status).asTime();
 
-    MTransformationMatrix matrix = data.inputValue(matrixInput, &status).asMatrix();
+  MTransformationMatrix matrix = data.inputValue(matrixInput, &status).asMatrix();
 
-    MFloatPointArray vertices;
-    MFloatVectorArray normals;
-    inputMesh.getPoints(vertices, MSpace::kWorld);
-    unsigned int springCount = vertices.length();
-    inputMesh.getVertexNormals(false, normals, MSpace::kWorld);
+  MFloatPointArray vertices;
+  MFloatVectorArray normals;
+  inputMesh.getPoints(vertices, MSpace::kWorld);
+  unsigned int springCount = vertices.length();
+  inputMesh.getVertexNormals(false, normals, MSpace::kWorld);
 
+  if(plug == outputSpringPositions) {
     MArrayDataHandle outputPositions = data.outputArrayValue( FurriesSpringNode::outputSpringPositions);
 
     MArrayDataBuilder positionBuilder(FurriesSpringNode::outputSpringPositions, springCount);
@@ -152,13 +152,18 @@ MStatus FurriesSpringNode::compute(const MPlug& plug, MDataBlock& data) {
       point = point * matrix.asMatrix();
       outPoint.set3Double(point.x, point.y, point.z);
     }
+    outputPositions.set(positionBuilder);
+  }
 
-
+  if( plug == outputSpringAngles) {
     //angle calculations goes here
     MArrayDataHandle outputAngles = data.outputArrayValue( FurriesSpringNode::outputSpringAngles);
     MArrayDataBuilder angleBuilder(FurriesSpringNode::outputSpringAngles, springCount);
 
     MArrayDataHandle inputAngles = data.inputValue( springAnglesInput);
+
+    MFloatVector g(0, -data.inputValue(gravityInput).asFloat(), 0);
+    float ks = data.inputValue(stiffnessInput).asFloat();
 
     for(unsigned int i = 0; i < springCount; i++) {
 
@@ -172,26 +177,84 @@ MStatus FurriesSpringNode::compute(const MPlug& plug, MDataBlock& data) {
 
       MDataHandle outangle  = angleBuilder.addLast();
       MFloatVector normal = normals[i];
+
       MFloatVector up(0, 1.0, 0);
 
       MMatrix m = matrix.asRotateMatrix();
       normal = MPoint(normal) * m;
       MQuaternion q(up, normal);
 
+
       if(currentTime.value() <= 1) {
+        //reset hair to normal
         MFloatVector angles = q.asEulerRotation().asVector();
         angles *= 180/3.14;
+        mSpringW[i] = MFloatVector::zero;
+        mSpringNormal[i] = normal;
+        mSpringAngularVelocity[i] = MFloatVector::zero;
         outangle.set3Double(angles.x, angles.y, angles.z);
       }
       else if(foundAngle) {
-        outangle.set3Double(inAngle.x, inAngle.y, inAngle.z+sin(currentTime.value()*0.1));
+        MFloatVector wAngle = mSpringW[i];
+        MFloatVector springVelocity = mSpringAngularVelocity[i];
+        MFloatVector springNormal = mSpringNormal[i];
+
+        float rho = 1.0f; //FIXME hair density per unit
+        float ka = 1.0f; //FIXME air-resistance coefficient
+        float damping = 0.5f;
+
+        MFloatVector ami, aa, as;
+        ami = springNormal^(g-as);
+        //aa = ka * (-mMeshVelocity)^springNormal/rho;
+        //as = -ks*springNormal;
+
+        MFloatVector ai = ami + aa + as;
+
+        springVelocity = springVelocity + ai*0.001*damping;
+        cout << ai << endl;
+        mSpringAngularVelocity[i] = springVelocity;
+
+        MFloatVector newAngle = wAngle+springVelocity*0.001;
+
+        MTransformationMatrix angleWmatrix;
+        angleWmatrix.setToRotationAxis(newAngle.normal(), newAngle.length());
+
+        MFloatVector outAngle = MPoint(inAngle) * angleWmatrix.asRotateMatrix();
+        outangle.set3Double(outAngle.x, outAngle.y, outAngle.z);
+        mSpringNormal[i] = MPoint(normal) * angleWmatrix.asRotateMatrix();
+        mSpringW[i] = newAngle;
       }
     }
 
-    outputPositions.set(positionBuilder);
     outputAngles.set(angleBuilder);
     data.setClean(plug);
   }
 
   return status;
+}
+
+MStatus FurriesSpringNode::connectionMade(const MPlug& plug, const MPlug& extPlug, bool asSrc) {
+  if(plug == meshInput) {
+    MObject otherNode = extPlug.node();
+    MFnMesh inputMesh(otherNode);
+    MFloatPointArray vertices;
+    MFloatVectorArray normals;
+    inputMesh.getPoints(vertices, MSpace::kWorld);
+    unsigned int springCount = vertices.length();
+    inputMesh.getVertexNormals(false, normals, MSpace::kWorld);
+
+    mSpringAngularVelocity.setLength(springCount);
+    mSpringW.setLength(springCount);
+    mSpringNormal.setLength(springCount);
+    cout << "Connection!" << endl;
+  }
+  return MStatus::kUnknownParameter;
+}
+
+MStatus FurriesSpringNode::connectionBroken(const MPlug& plug, const MPlug& extPlug, bool asSrc) {
+  if(plug == meshInput) {
+    mSpringNormal.clear();
+    mSpringAngularVelocity.clear();
+  }
+  return MStatus::kUnknownParameter;
 }

@@ -11,6 +11,7 @@
 #include <maya/MPxNode.h>
 #include <maya/MObject.h>
 #include <maya/MFloatPointArray.h>
+#include <maya/MFloatVectorArray.h>
 
 class FurriesSpringNode : public MPxNode{
 public:
@@ -18,6 +19,8 @@ public:
   virtual ~FurriesSpringNode();
 
   virtual MStatus compute(const MPlug& plug, MDataBlock& data);
+  MStatus connectionMade(const MPlug& plug, const MPlug& extPlug, bool asSrc);
+  MStatus connectionBroken(const MPlug& plug, const MPlug& extPlug, bool asSrc);
 
   static void* creator() { return new FurriesSpringNode(); }
   static MStatus initialize();
@@ -35,6 +38,12 @@ public:
   static MObject outputSpringPositions;
   static MObject outputSpringAngles;
   static MTypeId id;
+
+private:
+  MFloatVector mMeshVelocity;
+  MFloatVectorArray mSpringAngularVelocity;
+  MFloatVectorArray mSpringW;
+  MFloatVectorArray mSpringNormal; //n_i'
 };
 
 #endif
