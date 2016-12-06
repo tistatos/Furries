@@ -1,12 +1,16 @@
 import maya.cmds as cmds
 import maya.api.OpenMaya as omn
 import math
-
+cmds.file(new=True, force=True)
 cmds.unloadPlugin("libfurries")
 cmds.loadPlugin("libfurries")
 cmds.polySphere()
 cmds.createNode("furrySpringNode")
+cmds.createNode("furryFurNode")
+cmds.createNode("nurbsCurve")
+cmds.connectAttr('pSphereShape1.outMesh', 'furryFurNode1.inputMesh')
 cmds.connectAttr('pSphereShape1.outMesh', 'furrySpringNode1.inputMesh')
+cmds.connectAttr('furryFurNode1.outputCurves[0]','curveShape1.create')
 cmds.connectAttr('time1.outTime', 'furrySpringNode1.inputTime')
 cmds.connectAttr('pSphere1.worldMatrix', 'furrySpringNode1.inputMatrix')
 
@@ -40,16 +44,5 @@ for i in range(0,382):
     cmds.curve(p=points)
     cmds.connectAttr(('furrySpringNode1.springPositions[%i]' % (i)), ('curve%i.translate' % (i+1)))
     cmds.connectAttr(('furrySpringNode1.springAngles[%i]' % (i)), ('curve%i.rotate' % (i+1)))
-    cmds.connectAttr(('curve%i.rotate' % (i+1)), ('furrySpringNode1.inputSpringAngles[%i]' % (i)));
-
-
-
-
-#import maya.cmds as cmds
-
-#cmds.unloadPlugin("furries");
-#cmds.loadPlugin("furries");
-#cmds.polySphere();
-#cmds.createNode("furryFurNode");
-#cmds.connectAttr('pSphereShape1.outMesh', 'furryFurNode1.inputMesh');
-#cmds.connectAttr('furryFurNode1.output', 'pSphere1.translateX');
+    cmds.connectAttr(('curve%i.rotate' % (i+1)), ('furrySpringNode1.inputSpringAngles[%i]' % (i)))
+   

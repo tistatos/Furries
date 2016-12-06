@@ -84,7 +84,7 @@ MStatus FurriesFurNode::createHairCurve(MFloatPointArray positions, MDataBlock& 
     MFnNurbsCurveData dataCreator;
     MObject outCurveData = dataCreator.create();
 
-    double k[] = {1.0,1.0,1.0,1.0,1.0,1.0,1.0};
+    double k[] = {0.0, 0.0, 0.0, 1.0, 2.0, 2.0, 2.0};
     MDoubleArray knots(k, 7);
 
     MPointArray cvs;
@@ -95,7 +95,7 @@ MStatus FurriesFurNode::createHairCurve(MFloatPointArray positions, MDataBlock& 
     cvs.append(MPoint(0,0,1));
 
     MFnNurbsCurve curve;
-    MObject newCurve = curve.create(cvs,knots,1, MFnNurbsCurve::Form::kOpen, false, true, outCurveData,&stat);
+    MObject newCurve = curve.create(cvs,knots,3, MFnNurbsCurve::Form::kOpen, false, true, outCurveData,&stat);
     outHandle.set(outCurveData);
 
   }
