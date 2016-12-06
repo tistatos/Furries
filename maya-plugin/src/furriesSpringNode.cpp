@@ -27,7 +27,12 @@
 
 #include "furriesSpringNode.h"
 
-
+#define PERRORfail(stat,msg) \
+                                                                if (!(stat)) { \
+                                                                        stat.perror((msg)); \
+                                                                        return (stat); \
+                                                                }
+                                                                
 MString FurriesSpringNode::name = "furrySpringNode";
 MTypeId FurriesSpringNode::id(0x00001);
 
