@@ -21,7 +21,7 @@ public:
 
 public:
 
-  static MStatus createHairCurve(MFloatPoint pos, MDataBlock& data);
+  static MStatus createHairCurve(MFloatPointArray positions, MDataBlock& data);
   
   static MString name;
   

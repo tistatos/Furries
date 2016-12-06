@@ -55,13 +55,16 @@ MStatus FurriesFurNode::initialize() {
   //  Inputs
   FurriesFurNode::meshInput = typedAttr.create("inputMesh", "in", MFnData::kMesh, &status);
   typedAttr.setWritable(true);
+  addAttribute(meshInput);
 
   // Output
-  FurriesFurNode::outputCurves = typedAttr.create( "outputCurves", "oc", MFnData::kNurbsCurve, &status );
-
+  FurriesFurNode::outputCurves = typedAttr.create( "outputCurves", "oc", MFnNurbsCurveData::kNurbsCurve, &status );
+  CHECK_MSTATUS ( typedAttr.setArray( true ) );
+  CHECK_MSTATUS ( typedAttr.setReadable( true ) );
+  CHECK_MSTATUS ( typedAttr.setWritable( false ) );
+  CHECK_MSTATUS ( typedAttr.setUsesArrayDataBuilder( true ) );
   //Add attributes
   // Inputs
-  addAttribute(meshInput);
 
   // Outputs
   addAttribute(outputCurves);
@@ -72,22 +75,22 @@ MStatus FurriesFurNode::initialize() {
   return MStatus::kSuccess;
 }
 
-MStatus FurriesFurNode::createHairCurve(MFloatPoint pos, MDataBlock& data ){
+MStatus FurriesFurNode::createHairCurve(MFloatPointArray positions, MDataBlock& data ){
   
   MStatus stat;
-  int numCurves=1;
+  int numCurves=positions.length();
   MArrayDataHandle outputArray = data.outputArrayValue(outputCurves,&stat);
   MArrayDataBuilder builder(outputCurves, numCurves, &stat);
-  PERRORfail(stat, "BUILDER");
+
   for (int curveNum = 0; curveNum < numCurves; curveNum++) {
     MDataHandle outHandle = builder.addElement(curveNum);
 
-    
     MFnNurbsCurveData dataCreator;
     MObject outCurveData = dataCreator.create();
 
     double k[] = {1.0,1.0,1.0,1.0,1.0};
     MDoubleArray knots(k, 5);
+
     MPointArray cvs;
     cvs.append(MPoint(0,0,0));
     cvs.append(MPoint(0,0,0.25));
@@ -97,10 +100,9 @@ MStatus FurriesFurNode::createHairCurve(MFloatPoint pos, MDataBlock& data ){
 
     MFnNurbsCurve curve;
     MObject newCurve = curve.create(cvs,knots,1, MFnNurbsCurve::Form::kOpen, false, true, outCurveData,&stat);
-    cout << "Created curve with status" << stat << endl;
     outHandle.set(outCurveData);
 
-    PERRORfail(stat, "HEJ");
+
   }
   stat = outputArray.set(builder);
   return stat;
@@ -174,11 +176,11 @@ MStatus FurriesFurNode::compute(const MPlug& plug, MDataBlock& data) {
       }
     }
 
-    (stepSize / 2) + stepSize * i;
   }
 
 
-  MFloatPoint p00(0,1,0);
-  createHairCurve(p00, data);
+  MFloatPointArray arr;
+  arr.append(MFloatPoint(0,1,0));
+  createHairCurve(arr, data);
   return status;
 }
