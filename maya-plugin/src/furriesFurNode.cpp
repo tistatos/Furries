@@ -71,7 +71,7 @@ MStatus FurriesFurNode::initialize() {
 }
 
 MStatus FurriesFurNode::createHairCurve(MFloatPointArray positions, MDataBlock& data ){
-  
+
   MStatus stat;
 
   int numCurves=positions.length();
@@ -84,8 +84,8 @@ MStatus FurriesFurNode::createHairCurve(MFloatPointArray positions, MDataBlock& 
     MFnNurbsCurveData dataCreator;
     MObject outCurveData = dataCreator.create();
 
-    double k[] = {1.0,1.0,1.0,1.0,1.0};
-    MDoubleArray knots(k, 5);
+    double k[] = {1.0,1.0,1.0,1.0,1.0,1.0,1.0};
+    MDoubleArray knots(k, 7);
 
     MPointArray cvs;
     cvs.append(MPoint(0,0,0));
@@ -110,7 +110,7 @@ MStatus FurriesFurNode::compute(const MPlug& plug, MDataBlock& data) {
   MDataHandle inputMeshHandle = data.inputValue(meshInput, &status);
   MObject inputMeshObject(inputMeshHandle.asMesh());
   MFnMesh inputMesh(inputMeshObject);
-  
+
   MIntArray triCount;
   MIntArray triVert;
 
@@ -158,7 +158,7 @@ MStatus FurriesFurNode::compute(const MPlug& plug, MDataBlock& data) {
     p0p1.normalize();
     p1p0 = p1 - p0;
     p1p0.normalize();
-    
+
     p3 = p0 + (p2p0 * (stepSize/2)) + (p1p0 * (stepSize / 2));
     p4 = p1 + (p2p1 * (stepSize / 2)) + (p0p1 * (stepSize / 2));
     for (size_t i = 0; (i*stepSize) < (p0 - p2).length(); i++)

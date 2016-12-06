@@ -24,15 +24,8 @@
 #include <maya/MFloatVectorArray.h>
 #include <maya/MArrayDataBuilder.h>
 
-
 #include "furriesSpringNode.h"
 
-#define PERRORfail(stat,msg) \
-                                                                if (!(stat)) { \
-                                                                        stat.perror((msg)); \
-                                                                        return (stat); \
-                                                                }
-                                                                
 MString FurriesSpringNode::name = "furrySpringNode";
 MTypeId FurriesSpringNode::id(0x00001);
 
@@ -66,7 +59,7 @@ MStatus FurriesSpringNode::initialize() {
   matrixAttr.setWritable(true);
   addAttribute(matrixInput);
 
-  FurriesSpringNode::stiffnessInput = numericAttr.create("springStiffness", "stiff", MFnNumericData::kFloat, 1.0);
+  FurriesSpringNode::stiffnessInput = numericAttr.create("springStiffness", "stiff", MFnNumericData::kFloat, 2000.0);
   numericAttr.setWritable(true);
   addAttribute(stiffnessInput);
 
@@ -163,7 +156,6 @@ MStatus FurriesSpringNode::compute(const MPlug& plug, MDataBlock& data) {
     MArrayDataHandle inputAngles = data.inputValue( springAnglesInput);
 
     MFloatVector g(0, -data.inputValue(gravityInput).asFloat(), 0);
-    float ks = data.inputValue(stiffnessInput).asFloat();
 
     if(mLastTimeUpdate == currentTime.value()) {
       data.setClean(plug);
@@ -208,7 +200,8 @@ MStatus FurriesSpringNode::compute(const MPlug& plug, MDataBlock& data) {
 
         float rho = 1.0f; //FIXME: hair density per unit
         float ka = 1.0f; //FIXME: air-resistance coefficient
-        float damping = 500.0f; //FIXME: should be equation 7
+        float damping = 1500.0f; //FIXME: should be equation 7
+        float ks = data.inputValue(stiffnessInput).asFloat();
 
         MFloatVector ami, aa, as;
 
@@ -218,10 +211,11 @@ MStatus FurriesSpringNode::compute(const MPlug& plug, MDataBlock& data) {
         // Equation 2
         //aa = ka * (-mMeshVelocity)^springNormal/rho;
         // Equation 3
-        //as = -ks*springNormal;
+        as = -ks*wAngle;
 
         //sum all accelerations (Eq. 8)
         MFloatVector ai = ami + aa + as;
+
 
         //acceleration time step (Eq. 9)
         velocity = velocity + ai*FRAME_TIME_STEP/damping;
@@ -231,17 +225,17 @@ MStatus FurriesSpringNode::compute(const MPlug& plug, MDataBlock& data) {
 
         double angle = wAngle.length();
         //Equation 11
-        double const epsilon = 0.01;
+        double const epsilon = 0.001;
 
         if(angle < THETA_MAX * 0.5) {
           //noop
         }
         else if (angle > THETA_MAX * 0.5 && angle < THETA_MAX) {
-          velocity = (1.0-(1.0+epsilon)*(angle/THETA_MAX))*velocity.normal();
+          //velocity = (1.0-(1.0+epsilon)*(angle/THETA_MAX))*velocity.normal();
         }
         else {
           cout << "above max!" << endl;
-          velocity = -epsilon*velocity.normal();
+          //velocity = epsilon*velocity.normal();
         }
 
         //update wAngle to the new angle and store it (Eq. 10)
