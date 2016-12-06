@@ -3,6 +3,7 @@
 #include <maya/MGlobal.h>
 
 #include "furriesSpringNode.h"
+#include "furriesFurNode.h"
 
 MStatus initializePlugin(MObject obj) {
   MStatus status;
@@ -13,6 +14,12 @@ MStatus initializePlugin(MObject obj) {
       FurriesSpringNode::id,
       FurriesSpringNode::creator,
       FurriesSpringNode::initialize );
+  plugin.registerNode(
+    FurriesFurNode::name,
+    FurriesFurNode::id,
+    FurriesFurNode::creator,
+    FurriesFurNode::initialize
+  );
 
   //Register stuff here
   return status;

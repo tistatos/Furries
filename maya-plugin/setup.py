@@ -41,3 +41,15 @@ for i in range(0,382):
     cmds.connectAttr(('furrySpringNode1.springPositions[%i]' % (i)), ('curve%i.translate' % (i+1)))
     cmds.connectAttr(('furrySpringNode1.springAngles[%i]' % (i)), ('curve%i.rotate' % (i+1)))
     cmds.connectAttr(('curve%i.rotate' % (i+1)), ('furrySpringNode1.inputSpringAngles[%i]' % (i)));
+
+
+
+
+#import maya.cmds as cmds
+
+#cmds.unloadPlugin("furries");
+#cmds.loadPlugin("furries");
+#cmds.polySphere();
+#cmds.createNode("furryFurNode");
+#cmds.connectAttr('pSphereShape1.outMesh', 'furryFurNode1.inputMesh');
+#cmds.connectAttr('furryFurNode1.output', 'pSphere1.translateX');
