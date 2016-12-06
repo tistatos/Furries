@@ -39,6 +39,10 @@ public:
   static MTypeId id;
 
 private:
+  double mLastTimeUpdate;
+  double const FRAME_TIME_STEP = 0.01;
+  double const THETA_MAX = 0.003;
+
   MFloatVector mMeshVelocity;
   MFloatVectorArray mSpringAngularVelocity;
   MFloatVectorArray mSpringW;

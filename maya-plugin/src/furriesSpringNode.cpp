@@ -160,6 +160,12 @@ MStatus FurriesSpringNode::compute(const MPlug& plug, MDataBlock& data) {
     MFloatVector g(0, -data.inputValue(gravityInput).asFloat(), 0);
     float ks = data.inputValue(stiffnessInput).asFloat();
 
+    if(mLastTimeUpdate == currentTime.value()) {
+      data.setClean(plug);
+      return status;
+    }
+    mLastTimeUpdate = currentTime.value();
+
     for(unsigned int i = 0; i < springCount; i++) {
 
       MFloatVector inAngle;
@@ -169,60 +175,98 @@ MStatus FurriesSpringNode::compute(const MPlug& plug, MDataBlock& data) {
         inputAngles.next();
         foundAngle = true;
       }
-
       MDataHandle outangle  = angleBuilder.addLast();
-      MFloatVector normal = normals[i];
 
-      MFloatVector up(0, 1.0, 0);
-
-      MMatrix m = matrix.asRotateMatrix();
-      normal = MPoint(normal) * m;
-      MQuaternion q(up, normal);
-
+      //calculate normal in world space
 
       if(currentTime.value() <= 1) {
-        //reset hair to normal
+        MFloatVector normal = normals[i];
+        MMatrix m = matrix.asRotateMatrix();
+        normal = MPoint(normal) * m;
+        //calculate rotation for normal direction and reset curves
+        MFloatVector up(0, 1.0, 0);
+        MQuaternion q(up, normal);
         MFloatVector angles = q.asEulerRotation().asVector();
         angles *= 180/3.14;
+        outangle.set3Double(angles.x, angles.y, angles.z);
+
+        //reset velocities, w and modified normals
         mSpringW[i] = MFloatVector::zero;
         mSpringNormal[i] = normal;
         mSpringAngularVelocity[i] = MFloatVector::zero;
-        outangle.set3Double(angles.x, angles.y, angles.z);
       }
       else if(foundAngle) {
+        //Get stored variables
         MFloatVector wAngle = mSpringW[i];
-        MFloatVector springVelocity = mSpringAngularVelocity[i];
-        MFloatVector springNormal = mSpringNormal[i];
+        MFloatVector velocity = mSpringAngularVelocity[i];
+        MFloatVector wNormal = mSpringNormal[i];
 
-        float rho = 1.0f; //FIXME hair density per unit
-        float ka = 1.0f; //FIXME air-resistance coefficient
-        float damping = 0.5f;
+        float rho = 1.0f; //FIXME: hair density per unit
+        float ka = 1.0f; //FIXME: air-resistance coefficient
+        float damping = 500.0f; //FIXME: should be equation 7
 
         MFloatVector ami, aa, as;
-        ami = springNormal^(g-as);
+
+        //Equation 1
+        ami = wNormal^(g);
+
+        // Equation 2
         //aa = ka * (-mMeshVelocity)^springNormal/rho;
+        // Equation 3
         //as = -ks*springNormal;
 
+        //sum all accelerations (Eq. 8)
         MFloatVector ai = ami + aa + as;
 
-        springVelocity = springVelocity + ai*0.001*damping;
-        cout << ai << endl;
-        mSpringAngularVelocity[i] = springVelocity;
+        //acceleration time step (Eq. 9)
+        velocity = velocity + ai*FRAME_TIME_STEP/damping;
 
-        MFloatVector newAngle = wAngle+springVelocity*0.001;
+        //store new velocity
+        mSpringAngularVelocity[i] = velocity;
 
+        double angle = wAngle.length();
+        //Equation 11
+        double const epsilon = 0.01;
+
+        if(angle < THETA_MAX * 0.5) {
+          //noop
+        }
+        else if (angle > THETA_MAX * 0.5 && angle < THETA_MAX) {
+          velocity = (1.0-(1.0+epsilon)*(angle/THETA_MAX))*velocity.normal();
+        }
+        else {
+          cout << "above max!" << endl;
+          velocity = -epsilon*velocity.normal();
+        }
+
+        //update wAngle to the new angle and store it (Eq. 10)
+        MFloatVector newAngle = wAngle+velocity*FRAME_TIME_STEP;
+        mSpringW[i] = newAngle;
+
+        //create a rotation from the new angle
         MTransformationMatrix angleWmatrix;
         angleWmatrix.setToRotationAxis(newAngle.normal(), newAngle.length());
 
-        MFloatVector outAngle = MPoint(inAngle) * angleWmatrix.asRotateMatrix();
+        //apply rotation to the incoming angle
+        //MFloatVector outAngle = MPoint(inAngle) * angleWmatrix.asRotateMatrix();
+
+        //calculate new modified angle
+        MFloatVector newWNormal = MPoint(wNormal) * angleWmatrix.asRotateMatrix();
+        newWNormal.normalize();
+        mSpringNormal[i] = newWNormal;
+
+        MQuaternion q(wNormal, newWNormal);
+
+        inAngle *= 3.14/180;
+        //calculate new normal angle with old value
+        MFloatVector outAngle = (MEulerRotation(inAngle).asQuaternion()*q).asEulerRotation().asVector();
+        outAngle *= 180/3.14;
         outangle.set3Double(outAngle.x, outAngle.y, outAngle.z);
-        mSpringNormal[i] = MPoint(normal) * angleWmatrix.asRotateMatrix();
-        mSpringW[i] = newAngle;
       }
     }
 
     outputAngles.set(angleBuilder);
-    data.setClean(plug);
+    data.setClean(outputSpringAngles);
   }
 
   return status;
