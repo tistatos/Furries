@@ -113,6 +113,7 @@ MStatus FurriesSpringNode::initialize() {
 }
 
 MStatus FurriesSpringNode::compute(const MPlug& plug, MDataBlock& data) {
+
   MStatus status = MStatus::kSuccess;
 
   MDataHandle inputMeshHandle = data.inputValue(meshInput, &status);
@@ -121,6 +122,8 @@ MStatus FurriesSpringNode::compute(const MPlug& plug, MDataBlock& data) {
 
   MTime currentTime = data.inputValue(timeInput, &status).asTime();
 
+  //printf("FurriesSpringNode::compute -- currentTime %f \n", currentTime.value());
+  
   MTransformationMatrix matrix = data.inputValue(matrixInput, &status).asMatrix();
 
   MFloatPointArray vertices;
@@ -130,6 +133,8 @@ MStatus FurriesSpringNode::compute(const MPlug& plug, MDataBlock& data) {
   inputMesh.getVertexNormals(false, normals, MSpace::kWorld);
 
   if(plug == outputSpringPositions) {
+    
+
     MArrayDataHandle outputPositions = data.outputArrayValue( FurriesSpringNode::outputSpringPositions);
 
     MArrayDataBuilder positionBuilder(FurriesSpringNode::outputSpringPositions, springCount);
@@ -148,20 +153,20 @@ MStatus FurriesSpringNode::compute(const MPlug& plug, MDataBlock& data) {
     outputPositions.set(positionBuilder);
   }
 
-  if( plug == outputSpringAngles) {
-    //angle calculations goes here
-    MArrayDataHandle outputAngles = data.outputArrayValue( FurriesSpringNode::outputSpringAngles);
-    MArrayDataBuilder angleBuilder(FurriesSpringNode::outputSpringAngles, springCount);
-
-    MArrayDataHandle inputAngles = data.inputValue( springAnglesInput);
-
-    MFloatVector g(0, -data.inputValue(gravityInput).asFloat(), 0);
-
-    if(mLastTimeUpdate == currentTime.value()) {
+  if(fabs(mLastTimeUpdate - currentTime.value()) < 0.001) {
+    //printf("Same timestep, aborting!\n");
       data.setClean(plug);
       return status;
     }
+
+  if( plug == outputSpringAngles) {
+
     mLastTimeUpdate = currentTime.value();
+    //angle calculations goes here
+    MArrayDataHandle outputAngles = data.outputArrayValue( FurriesSpringNode::outputSpringAngles);
+    MArrayDataBuilder angleBuilder(FurriesSpringNode::outputSpringAngles, springCount);
+    MArrayDataHandle inputAngles = data.inputValue( springAnglesInput);
+    MFloatVector g(0, -data.inputValue(gravityInput).asFloat(), 0);
 
     for(unsigned int i = 0; i < springCount; i++) {
 
@@ -193,6 +198,7 @@ MStatus FurriesSpringNode::compute(const MPlug& plug, MDataBlock& data) {
         mSpringAngularVelocity[i] = MFloatVector::zero;
       }
       else if(foundAngle) {
+
         //Get stored variables
         MFloatVector wAngle = mSpringW[i];
         MFloatVector velocity = mSpringAngularVelocity[i];
@@ -231,11 +237,11 @@ MStatus FurriesSpringNode::compute(const MPlug& plug, MDataBlock& data) {
           //noop
         }
         else if (angle > THETA_MAX * 0.5 && angle < THETA_MAX) {
-          //velocity = (1.0-(1.0+epsilon)*(angle/THETA_MAX))*velocity.normal();
+          velocity = (1.0-(1.0+epsilon)*(angle/THETA_MAX))*velocity.normal();
         }
         else {
-          cout << "above max!" << endl;
-          //velocity = epsilon*velocity.normal();
+          //cout << "above max!" << endl;
+          velocity = epsilon*velocity.normal();
         }
 
         //update wAngle to the new angle and store it (Eq. 10)
@@ -261,9 +267,10 @@ MStatus FurriesSpringNode::compute(const MPlug& plug, MDataBlock& data) {
         MFloatVector outAngle = (MEulerRotation(inAngle).asQuaternion()*q).asEulerRotation().asVector();
         outAngle *= 180/3.14;
         outangle.set3Double(outAngle.x, outAngle.y, outAngle.z);
+
       }
     }
-
+    printf("Finished time step: %f \n", currentTime.value());
     outputAngles.set(angleBuilder);
     data.setClean(outputSpringAngles);
   }
@@ -284,7 +291,7 @@ MStatus FurriesSpringNode::connectionMade(const MPlug& plug, const MPlug& extPlu
     mSpringAngularVelocity.setLength(springCount);
     mSpringW.setLength(springCount);
     mSpringNormal.setLength(springCount);
-    cout << "Connection!" << endl;
+    //cout << "Connection!" << endl;
   }
   return MStatus::kUnknownParameter;
 }
