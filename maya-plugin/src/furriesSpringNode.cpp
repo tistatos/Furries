@@ -226,13 +226,13 @@ MStatus FurriesSpringNode::compute(const MPlug& plug, MDataBlock& data) {
         MFloatVector ami, aa, as;
 
 
-        //as = 2 * change / (FRAME_TIME_STEP*FRAME_TIME_STEP) - 2 * mMeshVelocity / FRAME_TIME_STEP;
+        as = acceleration;
 
         //Equation 1
         ami = wNormal^(g-as);
 
         // Equation 2
-        //aa = ka * (-mMeshVelocity)^springNormal/rho;
+        //aa = ka * (-mMeshVelocity)^wNormal/rho;
         // Equation 3
         as = -ks*wAngle;
 
