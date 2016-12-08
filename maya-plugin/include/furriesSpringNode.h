@@ -47,6 +47,8 @@ private:
 
   MTransformationMatrix mPrevMatrix;
   MFloatVector mMeshAcceleration;
+  MFloatVector mMeshVelocity;
+
   MFloatVectorArray mSpringAngularVelocity;
   MFloatVectorArray mSpringW;
   MFloatVectorArray mSpringNormal; //n_i'

@@ -165,6 +165,17 @@ MStatus FurriesSpringNode::compute(const MPlug& plug, MDataBlock& data) {
     MArrayDataHandle inputAngles = data.inputValue( springAnglesInput);
     MFloatVector g(0, -data.inputValue(gravityInput).asFloat(), 0);
 
+
+    MMatrix m = matrix.asRotateMatrix();
+
+    MFloatVector prevPosition = mPrevMatrix.getTranslation(MSpace::kWorld);
+    MFloatVector currentPosition = matrix.getTranslation(MSpace::kWorld);
+    MFloatVector change = currentPosition-prevPosition;
+
+    MFloatVector acceleration = 2 * change / (FRAME_TIME_STEP*FRAME_TIME_STEP) - 2 * mMeshVelocity / FRAME_TIME_STEP;
+
+    mMeshVelocity  = change / FRAME_TIME_STEP;
+    cout << currentTime.value() << " " << mMeshVelocity <<  " " << acceleration << endl;
     for(unsigned int i = 0; i < springCount; i++) {
 
       MFloatVector inAngle;
@@ -177,10 +188,9 @@ MStatus FurriesSpringNode::compute(const MPlug& plug, MDataBlock& data) {
       MDataHandle outangle  = angleBuilder.addLast();
 
       //calculate normal in world space
-
       MFloatVector normal = normals[i];
+
       if(currentTime.value() <= 1) {
-        MMatrix m = matrix.asRotateMatrix();
         normal = MPoint(normal) * m;
         //calculate rotation for normal direction and reset curves
         MFloatVector up(0, 1.0, 0);
@@ -195,18 +205,14 @@ MStatus FurriesSpringNode::compute(const MPlug& plug, MDataBlock& data) {
         mSpringAngularVelocity[i] = MFloatVector::zero;
         mPrevMatrix = matrix;
         mMeshAcceleration = MFloatVector::zero;
+        mMeshVelocity = MFloatVector::zero;
       }
       else if(foundAngle) {
-
         //Get stored variables
         MFloatVector wAngle = mSpringW[i];
         MFloatVector velocity = mSpringAngularVelocity[i];
         MFloatVector wNormal = mSpringNormal[i];
 
-        MFloatVector prevPosition = mPrevMatrix.getTranslation(MSpace::kWorld);
-        MFloatVector currentPosition = matrix.getTranslation(MSpace::kWorld);
-
-        MFloatVector change = currentPosition-prevPosition;
 
         float rho = 1.0f; //FIXME: hair density per unit
         float ka = 1.0f; //FIXME: air-resistance coefficient
@@ -218,7 +224,9 @@ MStatus FurriesSpringNode::compute(const MPlug& plug, MDataBlock& data) {
         float ks = data.inputValue(stiffnessInput).asFloat();
 
         MFloatVector ami, aa, as;
-        as = 2*change / (FRAME_TIME_STEP*FRAME_TIME_STEP);
+
+
+        //as = 2 * change / (FRAME_TIME_STEP*FRAME_TIME_STEP) - 2 * mMeshVelocity / FRAME_TIME_STEP;
 
         //Equation 1
         ami = wNormal^(g-as);
@@ -270,8 +278,9 @@ MStatus FurriesSpringNode::compute(const MPlug& plug, MDataBlock& data) {
         MFloatVector outAngle = (MEulerRotation(inAngle).asQuaternion()*q).asEulerRotation().asVector();
         outAngle *= 180/3.14;
         outangle.set3Double(outAngle.x, outAngle.y, outAngle.z);
-
       }
+
+    mPrevMatrix = matrix;
     }
     outputAngles.set(angleBuilder);
     data.setClean(outputSpringAngles);
