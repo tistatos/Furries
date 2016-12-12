@@ -30,6 +30,7 @@ MObject FurriesFurNode::springInput;
 
 MObject FurriesFurNode::outputCurves;
 MObject FurriesFurNode::numberOfCurves;  
+MObject FurriesFurNode::distanceBetweenStrands;
 MObject FurriesFurNode::inputSpringAngles;
 MObject FurriesFurNode::inputSpringPositions;
 
@@ -56,6 +57,13 @@ MStatus FurriesFurNode::initialize() {
   FurriesFurNode::meshInput = typedAttr.create("inputMesh", "in", MFnData::kMesh, &status);
   typedAttr.setWritable(true);
   addAttribute(meshInput);
+
+
+  FurriesFurNode::distanceBetweenStrands = numericAttr.create("distanceBetweenStrands", "dist", MFnNumericData::kDouble, 0.05, &status);
+  numericAttr.setWritable(true);
+  numericAttr.setMin(0.0001);
+  numericAttr.setMax(1.0000);
+  addAttribute(distanceBetweenStrands);
 
   // Output
   FurriesFurNode::outputCurves = typedAttr.create( "outputCurves", "oc", MFnNurbsCurveData::kNurbsCurve, &status );
@@ -90,6 +98,8 @@ MStatus FurriesFurNode::initialize() {
   status = attributeAffects(meshInput, outputCurves);
   status = attributeAffects(meshInput, numberOfCurves);
   status = attributeAffects(inputSpringAngles, outputCurves);
+  status = attributeAffects(distanceBetweenStrands, outputCurves);
+  status = attributeAffects(distanceBetweenStrands, numberOfCurves);
 
   return MStatus::kSuccess;
 }
@@ -143,6 +153,8 @@ MStatus FurriesFurNode::compute(const MPlug& plug, MDataBlock& data) {
 
   MArrayDataHandle inputAngles = data.inputValue(inputSpringAngles, &status);
   
+  MDataHandle inputStepSize = data.inputValue(distanceBetweenStrands, &status);
+
   MDataHandle nCurvesHandle = data.outputValue( FurriesFurNode::numberOfCurves, &status);
   
   MIntArray triCount;
@@ -166,7 +178,7 @@ MStatus FurriesFurNode::compute(const MPlug& plug, MDataBlock& data) {
   inputMesh.getNormals(normalList, MSpace::kWorld);  
   inputMesh.getTriangles(triCount, triVert);
 
-  double stepSize = 0.1;
+  double stepSize = inputStepSize.asDouble();
   double ap0[4];
   double ap1[4];
   double ap2[4];
@@ -198,6 +210,8 @@ MStatus FurriesFurNode::compute(const MPlug& plug, MDataBlock& data) {
     pointList[triVert[index]].get(ap0);
     pointList[triVert[index + 1]].get(ap1);
     pointList[triVert[index + 2]].get(ap2);
+
+
     p0 = arrToVec(ap0);
     p1 = arrToVec(ap1);
     p2 = arrToVec(ap2);

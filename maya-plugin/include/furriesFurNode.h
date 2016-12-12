@@ -14,6 +14,7 @@ public:
     int springIndices[3];
     int springWeights[3];
   };
+
   FurriesFurNode();
   virtual ~FurriesFurNode();
 
@@ -23,13 +24,14 @@ public:
   static MStatus initialize();
 
 
-  static  MObject outputCurves;
-  static  MObject numberOfCurves;
+  static MObject outputCurves;
+  static MObject numberOfCurves;
   static MStatus createHairCurve( MFloatPointArray positions,  MFloatPointArray normals, MDataBlock& data);
   
   static MString name;
   
   static MObject meshInput;
+  static MObject distanceBetweenStrands;
 
   static MObject springInput;
   static MObject inputSpringPositions;
