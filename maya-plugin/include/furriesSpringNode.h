@@ -12,6 +12,7 @@
 #include <maya/MObject.h>
 #include <maya/MFloatPointArray.h>
 #include <maya/MFloatVectorArray.h>
+#include <maya/MMatrix.h>
 
 class FurriesSpringNode : public MPxNode{
 public:
@@ -41,10 +42,13 @@ public:
 
 private:
   double mLastTimeUpdate;
-  double const FRAME_TIME_STEP = 0.016;
-  double const THETA_MAX = 0.004;
+  double const FRAME_TIME_STEP = 0.05;
+  double const THETA_MAX = 3.14/2;
 
+  MTransformationMatrix mPrevMatrix;
+  MFloatVector mMeshAcceleration;
   MFloatVector mMeshVelocity;
+
   MFloatVectorArray mSpringAngularVelocity;
   MFloatVectorArray mSpringW;
   MFloatVectorArray mSpringNormal; //n_i'

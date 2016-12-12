@@ -23,6 +23,17 @@ for i in range(0, n) :
 
 '''
 for i in range(0,382):
+
+#cmds.createNode("furryFurNode")
+cmds.createNode("nurbsCurve")
+#cmds.connectAttr('pSphereShape1.outMesh', 'furryFurNode1.inputMesh')
+cmds.connectAttr('pSphereShape1.outMesh', 'furrySpringNode1.inputMesh')
+#cmds.connectAttr('furryFurNode1.outputCurves[0]','curveShape1.create')
+cmds.connectAttr('time1.outTime', 'furrySpringNode1.inputTime')
+cmds.connectAttr('pSphere1.worldMatrix', 'furrySpringNode1.inputMatrix')
+
+for i in range(0,100):
+
     points = []
     pointsPerCurve = 5
 
@@ -46,8 +57,8 @@ for i in range(0,382):
         xi = omn.MVector(((1 - math.cos(theta*u))/theta) * x)
         yi =  omn.MVector((lxy*math.sin(u*theta)/theta)*l*y)
         point = omn.MVector(0.0, 0.1*j, 0.0)
+        point = omn.MVector(0, 0.1*j, 0)
         points.append((point.x, point.y, point.z))
-
 
     cmds.curve(p=points)
     cmds.connectAttr(('furrySpringNode1.springPositions[%i]' % (i)), ('curve%i.translate' % (i+1)))
@@ -55,6 +66,3 @@ for i in range(0,382):
     cmds.connectAttr(('curve%i.rotate' % (i+1)), ('furrySpringNode1.inputSpringAngles[%i]' % (i)))
    
 '''
-
-
-cmds.polySphere()
