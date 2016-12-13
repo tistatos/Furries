@@ -57,7 +57,7 @@ MStatus FurriesFurNode::initialize() {
 	typedAttr.setWritable(true);
 	addAttribute(meshInput);
 
-	FurriesFurNode::distanceBetweenStrands = numericAttr.create("distanceBetweenStrands", "dist", MFnNumericData::kDouble, 0.1, &status);
+	FurriesFurNode::distanceBetweenStrands = numericAttr.create("distanceBetweenStrands", "dist", MFnNumericData::kDouble, 0.07, &status);
 
 	numericAttr.setWritable(true);
 	numericAttr.setMin(0.0001);
@@ -205,44 +205,29 @@ MStatus FurriesFurNode::compute(const MPlug& plug, MDataBlock& data) {
 		MFloatVector p2p4;
 		MFloatVector p4p3;
 
-		cout << "triangle count: " << triangleCount.length() << endl;
-		cout << "Angles size: " << angles.length() << endl;
-
 		MFloatPointArray pointArray;
 		MFloatVectorArray resultNormalArray;
 		MFloatVectorArray wArray;
 
-		unsigned int numberOfPolygons = triangleCount.length();
-		unsigned int numberOfSprings = inputAngles.elementCount();
 
 		for(int i = 0; i < triangleVertices.length(); i += 3){
 
 			int index = i;
 
-			pointList[triangleVertices[index]].get(ap);
-			p0 = arrToVec(ap);
+      p0 = pointList[triangleVertices[index]];
+      p1 = pointList[triangleVertices[index+1]];
+      p2 = pointList[triangleVertices[index+2]];
 
-			pointList[triangleVertices[index + 1]].get(ap);
-			p1 = arrToVec(ap);
-
-			pointList[triangleVertices[index + 2]].get(ap);
-			p2 = arrToVec(ap);
+      if (index == 6){
+        cout << "p0: " << p0;
+        cout << " p1: " << p1;
+        cout << " p2: " << p2 << endl;
+      }
 
 			p2p0 = (p2 - p0).normal();
 			p2p1 = (p2 - p1).normal();
 			p0p1 = (p0 - p1).normal();
 			p1p0 = (p1 - p0).normal();
-
-			//w angles from spring node
-			bool outOfAngleRange =
-				triangleVertices[index] > numberOfSprings ||
-				triangleVertices[index + 1] > numberOfSprings ||
-				triangleVertices[index + 2] > numberOfSprings;
-
-			if( outOfAngleRange) {
-				cout << "not enough angles!" << endl;
-				break;
-			}
 
 			p3 = p0 + (p2p0 * (stepSize/2)) + (p1p0 * (stepSize / 2));
 			p4 = p1 + (p2p1 * (stepSize / 2)) + (p0p1 * (stepSize / 2));
@@ -269,25 +254,46 @@ MStatus FurriesFurNode::compute(const MPlug& plug, MDataBlock& data) {
 				for (int k = 0; (k*stepSize) < (p4-p3).length(); k++) {
 					// Add nurbcurve at p3 + ((p4-p3).normalize() * k * stepSize)
 					p4p3 = (p4 - p3).normal();
-					MFloatVector interpolatedPosition = p3 + p4p3 * k * stepSize;
+					MVector interpolatedPosition = p3 + p4p3 * k * stepSize;
 
-					////calculate interpolation values
-					float A0 = ((interpolatedPosition - p1) ^ (p2 - p1)).length()/2.0;
-					float A1 = ((interpolatedPosition - p0) ^ (p2 - p0)).length()/2.0;
-					float A2 = ((p1 - p0) ^ (interpolatedPosition - p0)).length()/2.0;
+          if (index == 6){
+            cout << "position: " << interpolatedPosition << endl;
+          }
 
-					float weight0 = A0/A;
-					float weight1 = A1/A;
-					float weight2 = A2/A;
+          //interpolatedPosition = p0;
+					// calculate interpolation values
+				  MVector v0 = p1-p0;
+          MVector v1 = p2-p0;
+          MVector v2 = interpolatedPosition - p0;
 
-					pointArray.append(interpolatedPosition);
+          float d00 = v0*v0;
+          float d01 = v0*v1;
+          float d11 = v1*v1;
+          float d20 = v2*v0;
+          float d21 = v2*v1;
+          float denom = d00 * d11 - d01 * d01;
+          float v = (d11 * d20 - d01 * d21) / denom;
+          float w = (d00 * d21 - d01 * d20) / denom;
+          float u = 1.0f - v - w;
 
-					MFloatVector interpolatedNormal = ( weight0 * n0 +  weight1 * n1 +  weight2 * n2);
-					MFloatVector interpolatedW = ( weight2 * w0 +  weight2 * w1 +  weight2 * w2);
-					interpolatedNormal.normalize();
-					resultNormalArray.append(interpolatedNormal);
-					wArray.append(interpolatedW);
-				}
+					float weight0 = u;
+					float weight1 = v;
+					float weight2 = w;
+
+          if ( u > -0.001 && u <= 1.001 &&
+               v > -0.001 && v <= 1.001 &&
+               w > -0.001 && w <= 1.001){
+            pointArray.append(interpolatedPosition);
+
+            MFloatVector interpolatedNormal = ( weight0 * n0 +  weight1 * n1 +  weight2 * n2);
+            MFloatVector interpolatedW = ( weight2 * w0 +  weight2 * w1 +  weight2 * w2);
+            interpolatedNormal.normalize();
+            resultNormalArray.append(interpolatedNormal);
+            wArray.append(interpolatedW);
+				  }else{
+            //printf("Interpolated point outside of triangle, got %f, %f, %f. skipping! \n", u,v,w);
+          }
+        }
 
 				p3 += p2p0 * (stepSize);
 				p4 += p2p1 * (stepSize);
