@@ -274,7 +274,7 @@ MStatus FurriesSpringNode::calculateSprings(MDataBlock& data) {
       //update wAngle to the new angle and store it (Eq. 10)
       MFloatVector newAngle = wAngle+velocity*FRAME_TIME_STEP;
       mSpringW[i] = newAngle;
-
+      
       //create a rotation from the new angle
       MTransformationMatrix angleWmatrix;
       angleWmatrix.setToRotationAxis(newAngle.normal(), newAngle.length());
