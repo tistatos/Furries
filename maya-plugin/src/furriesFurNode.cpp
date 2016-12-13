@@ -59,7 +59,7 @@ MStatus FurriesFurNode::initialize() {
   addAttribute(meshInput);
 
 
-  FurriesFurNode::distanceBetweenStrands = numericAttr.create("distanceBetweenStrands", "dist", MFnNumericData::kDouble, 0.1, &status);
+  FurriesFurNode::distanceBetweenStrands = numericAttr.create("distanceBetweenStrands", "dist", MFnNumericData::kDouble, 0.1  , &status);
   numericAttr.setWritable(true);
   numericAttr.setMin(0.0001);
   numericAttr.setMax(1.0000);
@@ -120,23 +120,30 @@ MStatus FurriesFurNode::createHairCurve( MFloatPointArray positions,  MFloatPoin
     MFnNurbsCurveData dataCreator;
     MObject outCurveData = dataCreator.create();
 
-    double k[] = {0.0, 0.0, 0.0, 1.0, 2.0, 2.0, 2.0};
-    MDoubleArray knots(k, 7);
+    double k[] = {0.0, 0.0, 0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 7.0, 7.0};
+    MDoubleArray knots(k, 12);
     MVector w = wArray[curveNum];
+    
     MPoint pos = MPoint(positions[curveNum]);
     MPoint normal = MPoint(normals[curveNum]);
 
     MVector z = w.normal();
     double theta = w.length();
     double length = 1.0;
-    double lxy = 0.2;
+    double lxy = 0.5;
     MVector x = (w ^ normal).normal();
     MVector y = (w ^ x).normal();
     MPointArray cvs;
-    for (float u = 0.0; u <= 1.0; u += 0.2){
+
+    // if (curveNum == 10){
+    //   cout << "Pos: " << pos << ", w: " << w << endl; 
+    // }
+
+    for (int j = 0; j < 10; j++){
+      float u = j/10.0;
       cvs.append(pos + 
-                  u*z + lxy*(1-cosf(u * theta)/theta)*x +
-                  length*lxy * sin(u*theta)/theta * y
+                (u*z + (lxy*(1-cos(u * theta))/theta)*x +
+                lxy * sin(u*theta)/theta * y)*length
                 );
     }
 
@@ -150,9 +157,11 @@ MStatus FurriesFurNode::createHairCurve( MFloatPointArray positions,  MFloatPoin
 }
 
 MStatus FurriesFurNode::compute(const MPlug& plug, MDataBlock& data) {
+  
+  
+  MStatus status = MStatus::kSuccess;
   if (plug == outputCurves || plug == numberOfCurves){
 
-  MStatus status = MStatus::kSuccess;
 
   MDataHandle inputMeshHandle = data.inputValue(meshInput, &status);
   MObject inputMeshObject(inputMeshHandle.asMesh());
@@ -170,16 +179,15 @@ MStatus FurriesFurNode::compute(const MPlug& plug, MDataBlock& data) {
 
   inputMesh.getPoints(pointList, MSpace::kWorld);
   
-  MFloatVectorArray angles = MFloatVectorArray(pointList.length());
+  MVectorArray angles = MVectorArray(pointList.length());
   
   for (int i=0; i < pointList.length(); i++){
     if(inputAngles.elementCount() > 0 && inputAngles.elementIndex() == i) {
-      angles[i] = inputAngles.inputValue().asFloat3();
+      angles[i] = inputAngles.inputValue().asDouble3();
       inputAngles.next();
     }
   }
 
-  cout << angles.length() << endl;
   inputMesh.getNormals(normalList, MSpace::kWorld);  
   inputMesh.getTriangles(triCount, triVert);
 
@@ -216,7 +224,6 @@ MStatus FurriesFurNode::compute(const MPlug& plug, MDataBlock& data) {
     pointList[triVert[index]].get(ap0);
     pointList[triVert[index + 1]].get(ap1);
     pointList[triVert[index + 2]].get(ap2);
-
 
     p0 = arrToVec(ap0);
     p1 = arrToVec(ap1);
@@ -265,7 +272,7 @@ MStatus FurriesFurNode::compute(const MPlug& plug, MDataBlock& data) {
         p4p3.normalize();
         resultVec = p3 + p4p3 * k * stepSize;
         MFloatPoint pos = MFloatPoint(resultVec);
-
+        
         //calculate interpolation values
         float A0 = ((resultVec - p1) ^ (p2 - p1)).length()/2.0;
         float A1 = ((resultVec - p0) ^ (p2 - p0)).length()/2.0;
@@ -275,12 +282,11 @@ MStatus FurriesFurNode::compute(const MPlug& plug, MDataBlock& data) {
         float v1 = A1/A;
         float v2 = A2/A;
 
-        //cout << "Area : " << A << " A1: "<< A0 << " A2: " << A1 << " A3: " << A2 << endl;
-        
         pointArray.append(MFloatPoint(resultVec));
 
-        MFloatVector normalz = ( v0 * n0 +  v1 * n1 +  v2 * n2);
-        MFloatVector w = ( v0 * w0 +  v1 * w1 +  v2 * w2);
+        MFloatVector normalz = ( v0 * n0 +  v1 * n1 +  v2 * n2 );
+        MFloatVector w = ( v0 * w0 +  v1 * w1 +  v2 * w2 );
+        w = w0;
         normalz.normalize();
         resultNormalArray.append(MFloatPoint(normalz));
         wArray.append(MFloatPoint(w));
@@ -301,4 +307,5 @@ MStatus FurriesFurNode::compute(const MPlug& plug, MDataBlock& data) {
   return status;
   }
 
+  return status;
 }
