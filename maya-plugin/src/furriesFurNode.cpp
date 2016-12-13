@@ -57,16 +57,6 @@ MStatus FurriesFurNode::initialize() {
   typedAttr.setWritable(true);
   addAttribute(meshInput);
 
-  // Output
-  FurriesFurNode::outputCurves = typedAttr.create( "outputCurves", "oc", MFnNurbsCurveData::kNurbsCurve, &status );
-  CHECK_MSTATUS ( typedAttr.setArray( true ) );
-  CHECK_MSTATUS ( typedAttr.setReadable( true ) );
-  CHECK_MSTATUS ( typedAttr.setWritable( false ) );
-  CHECK_MSTATUS ( typedAttr.setUsesArrayDataBuilder( true ) );
-
-  FurriesFurNode::numberOfCurves = numericAttr.create( "numberOfCurves", "n", MFnNumericData::kInt, 0, &status );
-
-
   FurriesFurNode::inputSpringAngles = numericAttr.create("springAngles", "angles", MFnNumericData::k3Double);
   numericAttr.setWritable(true);
   numericAttr.setArray(true);
@@ -79,6 +69,16 @@ MStatus FurriesFurNode::initialize() {
   numericAttr.setUsesArrayDataBuilder(true);
   addAttribute(inputSpringPositions);
 
+  // Output
+  FurriesFurNode::outputCurves = typedAttr.create( "outputCurves", "oc", MFnNurbsCurveData::kNurbsCurve, &status );
+  CHECK_MSTATUS ( typedAttr.setArray( true ) );
+  CHECK_MSTATUS ( typedAttr.setReadable( true ) );
+  CHECK_MSTATUS ( typedAttr.setWritable( false ) );
+  CHECK_MSTATUS ( typedAttr.setUsesArrayDataBuilder( true ) );
+
+  FurriesFurNode::numberOfCurves = numericAttr.create( "numberOfCurves", "n", MFnNumericData::kInt, 0, &status );
+
+
   //Add attributes
   // Inputs
 
@@ -90,6 +90,7 @@ MStatus FurriesFurNode::initialize() {
   status = attributeAffects(meshInput, outputCurves);
   status = attributeAffects(meshInput, numberOfCurves);
   status = attributeAffects(inputSpringAngles, outputCurves);
+  status = attributeAffects(inputSpringPositions, outputCurves);
 
   return MStatus::kSuccess;
 }
@@ -142,6 +143,8 @@ MStatus FurriesFurNode::compute(const MPlug& plug, MDataBlock& data) {
   MFnMesh inputMesh(inputMeshObject);
 
   MArrayDataHandle inputAngles = data.inputValue(inputSpringAngles, &status);
+
+  MArrayDataHandle inputPositions = data.inputValue(inputSpringPositions, &status);
   
   MDataHandle nCurvesHandle = data.outputValue( FurriesFurNode::numberOfCurves, &status);
   
@@ -153,20 +156,23 @@ MStatus FurriesFurNode::compute(const MPlug& plug, MDataBlock& data) {
 
   inputMesh.getPoints(pointList, MSpace::kWorld);
   
-  MFloatVectorArray angles = MFloatVectorArray(pointList.length());
+  MVectorArray angles = MVectorArray(pointList.length());
+  MVectorArray positions = MVectorArray(pointList.length());
   
-  for (int i=0; i < pointList.length(); i++){
+  for (int i=0; i < inputAngles.elementCount(); i++){
     if(inputAngles.elementCount() > 0 && inputAngles.elementIndex() == i) {
-      angles[i] = inputAngles.inputValue().asFloat3();
+      angles[i] = inputAngles.inputValue().asDouble3();
+      positions[i] = inputPositions.inputValue().asDouble3();
       inputAngles.next();
+      inputPositions.next();
     }
   }
 
-  cout << angles.length() << endl;
+  //cout << angles.length() << endl;
   inputMesh.getNormals(normalList, MSpace::kWorld);  
   inputMesh.getTriangles(triCount, triVert);
 
-  double stepSize = 0.1;
+  double stepSize = 0.3;
   double ap0[4];
   double ap1[4];
   double ap2[4];
@@ -185,12 +191,19 @@ MStatus FurriesFurNode::compute(const MPlug& plug, MDataBlock& data) {
   MFloatVector p4p3;
   MFloatVector resultVec;
 
+  MFloatVector angle0;
+  MFloatVector angle1;
+  MFloatVector angle2;
+
+  cout << "triCount: " << triCount.length() << endl;
+  cout << "Angles size: " << angles.length() << endl;
+
   MFloatPoint resultPoint;
   MFloatPointArray pointArray;
   MFloatPointArray resultNormalArray;
   int curTri = 0;
-  for (int n=0; n < triCount.length(); n++){
-    for(int i=0; i < triCount[n] ; i++){
+  for (int n = 0; n < triCount.length(); n++){
+    for(int i = 0; i < triCount[n]; i++){
 
       int index = curTri;
       curTri += 3;
@@ -201,6 +214,34 @@ MStatus FurriesFurNode::compute(const MPlug& plug, MDataBlock& data) {
     p0 = arrToVec(ap0);
     p1 = arrToVec(ap1);
     p2 = arrToVec(ap2);
+
+    angle0 = angles[triVert[index]];
+    angle1 = angles[triVert[index] + 1];
+    angle2 = angles[triVert[index] + 2];
+
+
+    // FELSÖKNING
+    if (angles[triVert[index]].x != 0 || angles[triVert[index]].y != 0 || angles[triVert[index]].z != 0) {
+      cout << "INTE NOLLLLL!!! WOOHOOO!" << endl;
+    }
+
+    //cout << "index: " << triVert[index] << endl << endl;
+
+    //cout << "x: " << positions[triVert[index]].x << "   y: " << positions[triVert[index]].y << "   z: " << positions[triVert[index]].z << endl;
+    //cout << "x: " << p0.x << "   y: " << p0.y << "   z: " << p0.z << endl;
+
+    //if (positions[index].x == p0.x && positions[index].y == p0.y && positions[index].z == p0.z) {
+    //  cout << "samma position!!!" << endl;
+    //}
+    //else if (positions[index + 1].x == p0.x && positions[index + 1].y == p0.y && positions[index + 1].z == p0.z) {
+    //  cout << "kanske denna är samma?" << endl;
+    //}
+    ////else if (positions[index + 2].x == p0.x && positions[index + 2].y == p0.y && positions[index + 2].z == p0.z) {
+    //  cout << "___SAME! >> 2" << endl;
+    //}
+    //else {
+    //  cout << "inte samma..." << endl;
+    //}
 
     p2p0 = p2 - p0;
     p2p0.normalize();
@@ -242,9 +283,9 @@ MStatus FurriesFurNode::compute(const MPlug& plug, MDataBlock& data) {
         MFloatPoint pos = MFloatPoint(resultVec);
 
         //calculate interpolation values
-        float A0 = ((resultVec - p1) ^ (p2 - p1)).length()/2.0;
-        float A1 = ((resultVec - p0) ^ (p2 - p0)).length()/2.0;
-        float A2 = ((p1 - p0) ^ (resultVec - p0)).length()/2.0; 
+        float A0 = ((resultVec - p1) ^ (p2 - p1)).length()/2.0; // vikt från p0
+        float A1 = ((resultVec - p0) ^ (p2 - p0)).length()/2.0; // vikt från p1
+        float A2 = ((p1 - p0) ^ (resultVec - p0)).length()/2.0; // vikt från p2
 
         float w0 = A0/A;
         float w1 = A1/A;
@@ -254,7 +295,8 @@ MStatus FurriesFurNode::compute(const MPlug& plug, MDataBlock& data) {
         
         pointArray.append(MFloatPoint(resultVec));
 
-        MFloatVector normalz = ( w0 * n0 +  w1 * n1 +  w2 * n2);
+
+        MFloatVector normalz = ( w0 * angle0 +  w1 * angle1 +  w2 * angle2);
         normalz.normalize();
         resultNormalArray.append(MFloatPoint(normalz));
       }
