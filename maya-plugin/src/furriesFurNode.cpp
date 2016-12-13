@@ -99,7 +99,7 @@ MStatus FurriesFurNode::initialize() {
 }
 
 
-MStatus FurriesFurNode::createHairCurve( MFloatPointArray positions,  MFloatVectorArray normals, MFloatVectorArray wArray, MDataBlock& data){
+MStatus FurriesFurNode::createHairCurve( MFloatPointArray positions,  MFloatVectorArray normals, MFloatVectorArray wArray, MIntArray index, MDataBlock& data){
 
 	MStatus stat;
 
@@ -110,13 +110,15 @@ MStatus FurriesFurNode::createHairCurve( MFloatPointArray positions,  MFloatVect
 
 	for (int curveNum = 0; curveNum < numCurves; curveNum++) {
 
-		MDataHandle outHandle = builder.addLast();
+		MDataHandle outHandle = builder.addElement(index[curveNum]);
 
 		MFnNurbsCurveData dataCreator;
 		MObject outCurveData = dataCreator.create();
 
-		double k[] = {0.0, 0.0, 0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 7.0, 7.0};
-		MDoubleArray knots(k, 12);
+		double k[] = {0.0, 0.0, 0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0,
+			8.0, 9.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0, 18.0, 19.0
+				, 20.0, 20.0 ,20.0};
+		MDoubleArray knots(k, 22);
 		MVector w = wArray[curveNum];
 
 		MPoint pos = positions[curveNum];
@@ -124,22 +126,18 @@ MStatus FurriesFurNode::createHairCurve( MFloatPointArray positions,  MFloatVect
 
 		MVector z = w.normal();
 		double theta = w.length();
-		double length = 1.0;
-		double lxy = 0.5;
-		MVector x = (w ^ normal).normal();
-		MVector y = (w ^ x).normal();
+		double length = 1.00;
+		double lxy = 1.0;
+
+		MVector x = (z ^ normal).normal();
+		MVector y = (x ^ z).normal();
 		MPointArray cvs;
 
-		// if (curveNum == 10){
-		//   cout << "Pos: " << pos << ", w: " << w << endl;
-		// }
-
-		for (int j = 0; j < 10; j++){
-			float u = j/10.0;
+		for (int j = 0; j < 20; j++){
+			float u = j/20.0;
 			cvs.append(pos +
-								(u*z + (lxy*(1-cos(u * theta))/theta)*x +
-								lxy * sin(u*theta)/theta * y)*length
-								);
+								(u * z + (lxy * (1 - cos(u * theta)) / theta) * x +
+								lxy * sin(u * theta) / theta * y) * length );
 		}
 
 		MFnNurbsCurve curve;
@@ -153,8 +151,6 @@ MStatus FurriesFurNode::createHairCurve( MFloatPointArray positions,  MFloatVect
 
 MStatus FurriesFurNode::compute(const MPlug& plug, MDataBlock& data) {
 	MStatus status = MStatus::kSuccess;
-	if(plug == numberOfCurves) {
-	}
 
 	if (plug == outputCurves || plug == numberOfCurves){
 		//get mesh inputs
@@ -180,10 +176,8 @@ MStatus FurriesFurNode::compute(const MPlug& plug, MDataBlock& data) {
 		MIntArray triangleVertices;
 
 		MFloatPointArray pointList;
-		MFloatVectorArray normalList;
 
 		inputMesh.getPoints(pointList, MSpace::kWorld);
-		inputMesh.getNormals(normalList, MSpace::kWorld);
 		inputMesh.getTriangles(triangleCount, triangleVertices);
 
 		MVectorArray angles;
@@ -205,12 +199,11 @@ MStatus FurriesFurNode::compute(const MPlug& plug, MDataBlock& data) {
 		MFloatVector p2p4;
 		MFloatVector p4p3;
 
-		cout << "triangle count: " << triangleCount.length() << endl;
-		cout << "Angles size: " << angles.length() << endl;
 
 		MFloatPointArray pointArray;
 		MFloatVectorArray resultNormalArray;
 		MFloatVectorArray wArray;
+		MIntArray indexArray;
 
 		unsigned int numberOfPolygons = triangleCount.length();
 		unsigned int numberOfSprings = inputAngles.elementCount();
@@ -247,13 +240,14 @@ MStatus FurriesFurNode::compute(const MPlug& plug, MDataBlock& data) {
 			p3 = p0 + (p2p0 * (stepSize/2)) + (p1p0 * (stepSize / 2));
 			p4 = p1 + (p2p1 * (stepSize / 2)) + (p0p1 * (stepSize / 2));
 
+			//Triangle area
 			float A = ((p1 - p0 ) ^ (p2 - p0)).length()/2.0;
 
 			//Get normals
 			MVector n0,n1,n2;
-			inputMesh.getVertexNormal(index, n0, MSpace::kWorld);
-			inputMesh.getVertexNormal(index + 1, n1, MSpace::kWorld);
-			inputMesh.getVertexNormal(index + 2, n2, MSpace::kWorld);
+			inputMesh.getVertexNormal(triangleVertices[index], n0, MSpace::kWorld);
+			inputMesh.getVertexNormal(triangleVertices[index+1], n0, MSpace::kWorld);
+			inputMesh.getVertexNormal(triangleVertices[index+2], n0, MSpace::kWorld);
 
 			//Get w-vector
 			MVector w0,w1,w2;
@@ -261,6 +255,11 @@ MStatus FurriesFurNode::compute(const MPlug& plug, MDataBlock& data) {
 			w0 = angles[triangleVertices[index]];
 			w1 = angles[triangleVertices[index+1]];
 			w2 = angles[triangleVertices[index+2]];
+
+			unsigned strandsPerArea = 100; //FIXME should be set here
+
+			unsigned int strandsInTriangle = 100*A;
+			strandsInTriangle = 1;
 
 			for (size_t j = 0; (j*stepSize) < (p0 - p2).length(); j++) {
 				p2p3 = (p2 - p3).normal();
@@ -280,11 +279,18 @@ MStatus FurriesFurNode::compute(const MPlug& plug, MDataBlock& data) {
 					float weight1 = A1/A;
 					float weight2 = A2/A;
 
-					pointArray.append(interpolatedPosition);
+
 
 					MFloatVector interpolatedNormal = ( weight0 * n0 +  weight1 * n1 +  weight2 * n2);
 					MFloatVector interpolatedW = ( weight2 * w0 +  weight2 * w1 +  weight2 * w2);
+
+					interpolatedPosition = p0;
+					interpolatedNormal = n0;
+					interpolatedW = w0;
 					interpolatedNormal.normalize();
+
+					indexArray.append(triangleVertices[index]);
+					pointArray.append(interpolatedPosition);
 					resultNormalArray.append(interpolatedNormal);
 					wArray.append(interpolatedW);
 				}
@@ -301,7 +307,7 @@ MStatus FurriesFurNode::compute(const MPlug& plug, MDataBlock& data) {
 			//cout << "W: " << wArray[i] << endl;
 		//}
 
-		createHairCurve(pointArray, resultNormalArray, wArray, data);
+		createHairCurve(pointArray, resultNormalArray, wArray, indexArray, data);
 		nCurvesHandle.set((int)pointArray.length());
 		data.setClean(outputCurves);
 		data.setClean(numberOfCurves);

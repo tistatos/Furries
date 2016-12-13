@@ -27,7 +27,7 @@ public:
 
   static MObject outputCurves;
   static MObject numberOfCurves;
-  static MStatus createHairCurve( MFloatPointArray positions,  MFloatVectorArray normals, MFloatVectorArray wArray, MDataBlock& data);
+  static MStatus createHairCurve( MFloatPointArray positions,  MFloatVectorArray normals, MFloatVectorArray wArray, MIntArray index, MDataBlock& data);
 
   static MString name;
 
