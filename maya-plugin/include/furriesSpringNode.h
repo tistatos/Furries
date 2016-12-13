@@ -25,6 +25,11 @@ public:
 
   static void* creator() { return new FurriesSpringNode(); }
   static MStatus initialize();
+private:
+  MStatus calculatePositions(MDataBlock& data);
+  MStatus calculateSprings(MDataBlock& data);
+  MStatus calculateSpringNormal(MDataBlock& data);
+  MStatus calculateSpringAngle(MDataBlock& data);
 
 public:
   static MString name;
@@ -33,10 +38,10 @@ public:
   static MObject stiffnessInput;
   static MObject gravityInput;
   static MObject meshInput;
-  static MObject springAnglesInput;
   static MObject matrixInput;
 
   static MObject outputSpringPositions;
+  static MObject outputSpringNormals;
   static MObject outputSpringAngles;
   static MTypeId id;
 
