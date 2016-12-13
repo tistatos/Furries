@@ -149,6 +149,7 @@ MStatus FurriesSpringNode::calculatePositions(MDataBlock& data) {
 		point.y = vertices[triangleVertices[i]].y;
 		point.z = vertices[triangleVertices[i]].z;
 
+		point = point * matrix.asMatrix();
 		outPoint.set3Double(point.x, point.y, point.z);
 	}
 	outputPositions.set(positionBuilder);
@@ -216,6 +217,7 @@ MStatus FurriesSpringNode::calculateSprings(MDataBlock& data) {
 
 			//reset velocities, w and modified normals
 			mSpringW[index] = MFloatVector::zero;
+
 			mSpringNormal[index] = normal;
 			mSpringAngularVelocity[index] = MFloatVector::zero;
 			mPrevMatrix = matrix;
@@ -224,7 +226,7 @@ MStatus FurriesSpringNode::calculateSprings(MDataBlock& data) {
 
 			//FIXME VISUAL NORMAL OUTPUT DONT USE
 			MFloatVector up(0, 1.0, 0);
-			MQuaternion q(up, normal);
+			MQuaternion q(up, MPoint(normal)*matrix.asMatrix());
 			MFloatVector orientedNormal = q.asEulerRotation().asVector();
 			orientedNormal *= 180/3.14; //FIXME only rotational stuff
 			outnormal.set3Double(orientedNormal.x, orientedNormal.y, orientedNormal.z);
@@ -319,14 +321,7 @@ MStatus FurriesSpringNode::compute(const MPlug& plug, MDataBlock& data) {
 	}
 
 	if(plug == outputSpringAngles || plug == outputSpringNormals) {
-		//skip evaluation if we are on the same time step
-		//if(fabs(mLastTimeUpdate - currentTime.value()) < 0.001) {
-			//data.setClean(plug);
-			//return status;
-		//}
-
 		status = calculateSprings(data);
-		//mLastTimeUpdate = currentTime.value();
 	}
 
 	//store previous matrix for acceleration and velocity
