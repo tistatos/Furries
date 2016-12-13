@@ -19,17 +19,14 @@ for i in range(0, n) :
     cmds.setAttr('curveShape'+str(i+1)+'.aiRenderCurve', 1)
     cmds.setAttr('curveShape'+str(i+1)+'.aiCurveWidth', 0.2)
     cmds.connectAttr('furryFurNode1.outputCurves['+str(i)+']','curveShape'+str(i+1)+'.create')
-    
-    
+
 for i in range(0, n) :
     cmds.setAttr('curveShape'+str(i+1)+'.aiRenderCurve', 1)
     cmds.setAttr('curveShape'+str(i+1)+'.aiCurveWidth', 0.02)
 
-
-for i in range(0, n) : 
+for i in range(0, n) :
     cmds.createNode('aiHair')
     cmds.connectAttr('aiHair'+str(i+1)+'.outColor', 'curveShape'+str(i+1)+'.aiCurveShader')
-
 
 '''
 for i in range(0,382):
@@ -74,5 +71,5 @@ for i in range(0,100):
     cmds.connectAttr(('furrySpringNode1.springPositions[%i]' % (i)), ('curve%i.translate' % (i+1)))
     cmds.connectAttr(('furrySpringNode1.springAngles[%i]' % (i)), ('curve%i.rotate' % (i+1)))
     cmds.connectAttr(('curve%i.rotate' % (i+1)), ('furrySpringNode1.inputSpringAngles[%i]' % (i)))
-   
+
 '''

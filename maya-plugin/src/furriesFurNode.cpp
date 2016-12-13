@@ -29,7 +29,7 @@ MObject FurriesFurNode::meshInput;
 MObject FurriesFurNode::springInput;
 
 MObject FurriesFurNode::outputCurves;
-MObject FurriesFurNode::numberOfCurves;  
+MObject FurriesFurNode::numberOfCurves;
 MObject FurriesFurNode::distanceBetweenStrands;
 MObject FurriesFurNode::inputSpringAngles;
 MObject FurriesFurNode::inputSpringPositions;
@@ -38,329 +38,272 @@ FurriesFurNode::FurriesFurNode() {}
 FurriesFurNode::~FurriesFurNode() {}
 
 MFloatVector arrToVec(double theArray[]) {
-  MFloatVector vec;
-  vec.x = theArray[0];
-  vec.y = theArray[1];
-  vec.z = theArray[2];
-  return vec;
+	MFloatVector vec;
+	vec.x = theArray[0];
+	vec.y = theArray[1];
+	vec.z = theArray[2];
+	return vec;
 }
 
 MStatus FurriesFurNode::initialize() {
-  MStatus status;
-  MFnTypedAttribute typedAttr;
-  MFnMatrixAttribute  matrixAttr;
-  MFnNumericAttribute numericAttr;
-  MFnUnitAttribute unitAttr;
-  MGlobal::displayInfo("FURRIES BURRIES");
+	MStatus status;
+	MFnTypedAttribute typedAttr;
+	MFnMatrixAttribute  matrixAttr;
+	MFnNumericAttribute numericAttr;
+	MFnUnitAttribute unitAttr;
 
-  //  Inputs
-  FurriesFurNode::meshInput = typedAttr.create("inputMesh", "in", MFnData::kMesh, &status);
-  typedAttr.setWritable(true);
-  addAttribute(meshInput);
+	//  Inputs
+	FurriesFurNode::meshInput = typedAttr.create("inputMesh", "in", MFnData::kMesh, &status);
+	typedAttr.setWritable(true);
+	addAttribute(meshInput);
 
-  FurriesFurNode::distanceBetweenStrands = numericAttr.create("distanceBetweenStrands", "dist", MFnNumericData::kDouble, 0.1  , &status);
-  FurriesFurNode::distanceBetweenStrands = numericAttr.create("distanceBetweenStrands", "dist", MFnNumericData::kDouble, 0.1, &status);
+	FurriesFurNode::distanceBetweenStrands = numericAttr.create("distanceBetweenStrands", "dist", MFnNumericData::kDouble, 0.1, &status);
 
-  numericAttr.setWritable(true);
-  numericAttr.setMin(0.0001);
-  numericAttr.setMax(1.0000);
-  addAttribute(distanceBetweenStrands);
+	numericAttr.setWritable(true);
+	numericAttr.setMin(0.0001);
+	numericAttr.setMax(1.0000);
+	addAttribute(distanceBetweenStrands);
 
-  // Output
-  FurriesFurNode::outputCurves = typedAttr.create( "outputCurves", "oc", MFnNurbsCurveData::kNurbsCurve, &status );
-  CHECK_MSTATUS ( typedAttr.setArray( true ) );
-  CHECK_MSTATUS ( typedAttr.setReadable( true ) );
-  CHECK_MSTATUS ( typedAttr.setWritable( false ) );
-  CHECK_MSTATUS ( typedAttr.setUsesArrayDataBuilder( true ) );
+	FurriesFurNode::inputSpringPositions = numericAttr.create("springPositions", "positions", MFnNumericData::k3Double);
+	numericAttr.setWritable(true);
+	numericAttr.setArray(true);
+	addAttribute(inputSpringPositions);
 
-  FurriesFurNode::numberOfCurves = numericAttr.create( "numberOfCurves", "n", MFnNumericData::kInt, 0, &status );
+	FurriesFurNode::inputSpringAngles = numericAttr.create("springAngles", "angles", MFnNumericData::k3Double);
+	numericAttr.setWritable(true);
+	numericAttr.setArray(true);
+	addAttribute(inputSpringAngles);
 
-  FurriesFurNode::inputSpringAngles = numericAttr.create("springAngles", "angles", MFnNumericData::k3Double);
-  numericAttr.setWritable(true);
-  numericAttr.setArray(true);
-  numericAttr.setUsesArrayDataBuilder(true);
-  addAttribute(inputSpringAngles);
+	// Output
+	FurriesFurNode::outputCurves = typedAttr.create( "outputCurves", "oc", MFnNurbsCurveData::kNurbsCurve, &status );
+	typedAttr.setArray( true );
+	typedAttr.setReadable( true );
+	typedAttr.setWritable( false );
+	typedAttr.setUsesArrayDataBuilder( true );
+	addAttribute(outputCurves);
 
-  FurriesFurNode::inputSpringPositions = numericAttr.create("springPositions", "positions", MFnNumericData::k3Double);
-  numericAttr.setWritable(true);
-  numericAttr.setArray(true);
-  numericAttr.setUsesArrayDataBuilder(true);
-  addAttribute(inputSpringPositions);
+	FurriesFurNode::numberOfCurves = numericAttr.create( "numberOfCurves", "n", MFnNumericData::kInt, 0, &status );
+	addAttribute(numberOfCurves);
 
-  // Output
-  FurriesFurNode::outputCurves = typedAttr.create( "outputCurves", "oc", MFnNurbsCurveData::kNurbsCurve, &status );
-  CHECK_MSTATUS ( typedAttr.setArray( true ) );
-  CHECK_MSTATUS ( typedAttr.setReadable( true ) );
-  CHECK_MSTATUS ( typedAttr.setWritable( false ) );
-  CHECK_MSTATUS ( typedAttr.setUsesArrayDataBuilder( true ) );
+	//Affecting attributes
+	status = attributeAffects(meshInput, outputCurves);
+	status = attributeAffects(meshInput, numberOfCurves);
 
-  FurriesFurNode::numberOfCurves = numericAttr.create( "numberOfCurves", "n", MFnNumericData::kInt, 0, &status );
+	status = attributeAffects(inputSpringAngles, outputCurves);
+	status = attributeAffects(inputSpringPositions, outputCurves);
 
+	status = attributeAffects(distanceBetweenStrands, outputCurves);
+	status = attributeAffects(distanceBetweenStrands, numberOfCurves);
 
-  //Add attributes
-  // Inputs
-
-  // Outputs
-  addAttribute(outputCurves);
-  addAttribute(numberOfCurves);
-
-  //Affecting attributes
-  status = attributeAffects(meshInput, outputCurves);
-  status = attributeAffects(meshInput, numberOfCurves);
-  status = attributeAffects(inputSpringAngles, outputCurves);
-  status = attributeAffects(inputSpringPositions, outputCurves);
-  status = attributeAffects(distanceBetweenStrands, outputCurves);
-  status = attributeAffects(distanceBetweenStrands, numberOfCurves);
-
-  return MStatus::kSuccess;
+	return status;
 }
 
-MStatus FurriesFurNode::createHairCurve( MFloatPointArray positions,  MFloatPointArray normals, MFloatPointArray wArray, MDataBlock& data){
 
-  MStatus stat;
+MStatus FurriesFurNode::createHairCurve( MFloatPointArray positions,  MFloatVectorArray normals, MFloatVectorArray wArray, MDataBlock& data){
 
-  int numCurves=positions.length();
+	MStatus stat;
 
-  MArrayDataHandle outputArray = data.outputArrayValue(outputCurves,&stat);
-  MArrayDataBuilder builder(outputCurves, numCurves, &stat);
+	int numCurves=positions.length();
 
-  for (int curveNum = 0; curveNum < numCurves; curveNum++) {
+	MArrayDataHandle outputArray = data.outputArrayValue(outputCurves,&stat);
+	MArrayDataBuilder builder(outputCurves, numCurves, &stat);
 
-    MDataHandle outHandle = builder.addElement(curveNum);
+	for (int curveNum = 0; curveNum < numCurves; curveNum++) {
 
-    MFnNurbsCurveData dataCreator;
-    MObject outCurveData = dataCreator.create();
+		MDataHandle outHandle = builder.addLast();
 
-    double k[] = {0.0, 0.0, 0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 7.0, 7.0};
-    MDoubleArray knots(k, 12);
-    MVector w = wArray[curveNum];
-    
-    MPoint pos = MPoint(positions[curveNum]);
-    MPoint normal = MPoint(normals[curveNum]);
+		MFnNurbsCurveData dataCreator;
+		MObject outCurveData = dataCreator.create();
 
-    MVector z = w.normal();
-    double theta = w.length();
-    double length = 1.0;
-    double lxy = 0.5;
-    MVector x = (w ^ normal).normal();
-    MVector y = (w ^ x).normal();
-    MPointArray cvs;
+		double k[] = {0.0, 0.0, 0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 7.0, 7.0};
+		MDoubleArray knots(k, 12);
+		MVector w = wArray[curveNum];
 
-    // if (curveNum == 10){
-    //   cout << "Pos: " << pos << ", w: " << w << endl; 
-    // }
+		MPoint pos = positions[curveNum];
+		MVector normal = normals[curveNum];
 
-    for (int j = 0; j < 10; j++){
-      float u = j/10.0;
-      cvs.append(pos + 
-                (u*z + (lxy*(1-cos(u * theta))/theta)*x +
-                lxy * sin(u*theta)/theta * y)*length
-                );
-    }
+		MVector z = w.normal();
+		double theta = w.length();
+		double length = 1.0;
+		double lxy = 0.5;
+		MVector x = (w ^ normal).normal();
+		MVector y = (w ^ x).normal();
+		MPointArray cvs;
 
-    MFnNurbsCurve curve;
-    MObject newCurve = curve.create(cvs,knots,3, MFnNurbsCurve::Form::kOpen, false, true, outCurveData,&stat);
-    outHandle.set(outCurveData);
+		// if (curveNum == 10){
+		//   cout << "Pos: " << pos << ", w: " << w << endl;
+		// }
 
-  }
-  stat = outputArray.set(builder);
-  return stat;
+		for (int j = 0; j < 10; j++){
+			float u = j/10.0;
+			cvs.append(pos +
+								(u*z + (lxy*(1-cos(u * theta))/theta)*x +
+								lxy * sin(u*theta)/theta * y)*length
+								);
+		}
+
+		MFnNurbsCurve curve;
+		MObject newCurve = curve.create(cvs,knots,3, MFnNurbsCurve::Form::kOpen, false, true, outCurveData,&stat);
+		outHandle.set(outCurveData);
+
+	}
+	stat = outputArray.set(builder);
+	return stat;
 }
 
 MStatus FurriesFurNode::compute(const MPlug& plug, MDataBlock& data) {
-  
-  
-  MStatus status = MStatus::kSuccess;
-  if (plug == outputCurves || plug == numberOfCurves){
+	MStatus status = MStatus::kSuccess;
+	if(plug == numberOfCurves) {
+	}
+
+	if (plug == outputCurves || plug == numberOfCurves){
+		//get mesh inputs
+		MDataHandle inputMeshHandle = data.inputValue(meshInput, &status);
+		MObject inputMeshObject(inputMeshHandle.asMesh());
+		MFnMesh inputMesh(inputMeshObject, &status);
+
+		//angle inputs
+		MArrayDataHandle inputAngles = data.inputValue(inputSpringAngles, &status);
+		if(status != MStatus::kSuccess) {
+			cout << "Error getting angles" << endl;
+			return status;
+		}
+
+		//input step size
+		MDataHandle inputStepSize = data.inputValue(distanceBetweenStrands, &status);
+
+		//output curves count
+		MDataHandle nCurvesHandle = data.outputValue( FurriesFurNode::numberOfCurves, &status);
+
+		//get vertices, normals and triangles
+		MIntArray triangleCount;
+		MIntArray triangleVertices;
+
+		MFloatPointArray pointList;
+		MFloatVectorArray normalList;
+
+		inputMesh.getPoints(pointList, MSpace::kWorld);
+		inputMesh.getNormals(normalList, MSpace::kWorld);
+		inputMesh.getTriangles(triangleCount, triangleVertices);
+
+		MVectorArray angles;
+
+		//get angles from input
+		for (unsigned int i=0; i < inputAngles.elementCount(); i++) {
+			angles.append(inputAngles.inputValue().asDouble3());
+			inputAngles.next();
+		}
 
 
-  MDataHandle inputMeshHandle = data.inputValue(meshInput, &status);
-  MObject inputMeshObject(inputMeshHandle.asMesh());
-  MFnMesh inputMesh(inputMeshObject);
+		double stepSize = inputStepSize.asDouble();
+		double ap[4];
 
-  MArrayDataHandle inputAngles = data.inputValue(inputSpringAngles, &status);
-  MArrayDataHandle inputPositions = data.inputValue(inputSpringPositions, &status);
-  MDataHandle inputStepSize = data.inputValue(distanceBetweenStrands, &status);
-  MDataHandle nCurvesHandle = data.outputValue( FurriesFurNode::numberOfCurves, &status);
-  
-  MIntArray triCount;
-  MIntArray triVert;
+		MFloatVector p0, p1, p2, p3, p4;
+		MFloatVector p2p0, p1p0;
+		MFloatVector p2p1, p0p1;
+		MFloatVector p2p3;
+		MFloatVector p2p4;
+		MFloatVector p4p3;
 
-  MFloatPointArray pointList;
-  MFloatVectorArray normalList;
+		cout << "triangle count: " << triangleCount.length() << endl;
+		cout << "Angles size: " << angles.length() << endl;
 
-  inputMesh.getPoints(pointList, MSpace::kWorld);
-  
-  MVectorArray angles = MVectorArray(pointList.length());
-  MVectorArray positions = MVectorArray(pointList.length());
+		MFloatPointArray pointArray;
+		MFloatVectorArray resultNormalArray;
+		MFloatVectorArray wArray;
 
-  for (int i=0; i < inputAngles.elementCount(); i++){
-    if(inputAngles.elementCount() > 0 && inputAngles.elementIndex() == i) {
-      angles[i] = inputAngles.inputValue().asDouble3();
-      positions[i] = inputPositions.inputValue().asDouble3();
-      inputAngles.next();
-      inputPositions.next();
-    }
-  }
+		unsigned int numberOfPolygons = triangleCount.length();
+		unsigned int numberOfSprings = inputAngles.elementCount();
 
+		for(int i = 0; i < triangleVertices.length(); i += 3){
 
-  inputMesh.getNormals(normalList, MSpace::kWorld);  
-  inputMesh.getTriangles(triCount, triVert);
+			int index = i;
 
-  double stepSize = inputStepSize.asDouble();
+			pointList[triangleVertices[index]].get(ap);
+			p0 = arrToVec(ap);
 
-  double ap0[4];
-  double ap1[4];
-  double ap2[4];
+			pointList[triangleVertices[index + 1]].get(ap);
+			p1 = arrToVec(ap);
 
-  MFloatVector p0;
-  MFloatVector p1;
-  MFloatVector p2;
-  MFloatVector p3;
-  MFloatVector p4;
-  MFloatVector p2p0;
-  MFloatVector p2p1;
-  MFloatVector p0p1;
-  MFloatVector p1p0;
-  MFloatVector p2p3;
-  MFloatVector p2p4;
-  MFloatVector p4p3;
-  MFloatVector resultVec;
+			pointList[triangleVertices[index + 2]].get(ap);
+			p2 = arrToVec(ap);
 
-  MFloatVector angle0;
-  MFloatVector angle1;
-  MFloatVector angle2;
+			p2p0 = (p2 - p0).normal();
+			p2p1 = (p2 - p1).normal();
+			p0p1 = (p0 - p1).normal();
+			p1p0 = (p1 - p0).normal();
 
-  cout << "triCount: " << triCount.length() << endl;
-  cout << "Angles size: " << angles.length() << endl;
+			//w angles from spring node
+			bool outOfAngleRange =
+				triangleVertices[index] > numberOfSprings ||
+				triangleVertices[index + 1] > numberOfSprings ||
+				triangleVertices[index + 2] > numberOfSprings;
 
-  MFloatPoint resultPoint;
-  MFloatPointArray pointArray;
-  MFloatPointArray resultNormalArray;
-  MFloatPointArray wArray;
-  int curTri = 0;
-  for (int n = 0; n < triCount.length(); n++){
-    for(int i = 0; i < triCount[n]; i++){
+			if( outOfAngleRange) {
+				cout << "not enough angles!" << endl;
+				break;
+			}
 
-      int index = curTri;
-      curTri += 3;
+			p3 = p0 + (p2p0 * (stepSize/2)) + (p1p0 * (stepSize / 2));
+			p4 = p1 + (p2p1 * (stepSize / 2)) + (p0p1 * (stepSize / 2));
 
-    pointList[triVert[index]].get(ap0);
-    pointList[triVert[index + 1]].get(ap1);
-    pointList[triVert[index + 2]].get(ap2);
+			float A = ((p1 - p0 ) ^ (p2 - p0)).length()/2.0;
 
-    p0 = arrToVec(ap0);
-    p1 = arrToVec(ap1);
-    p2 = arrToVec(ap2);
+			//Get normals
+			MVector n0,n1,n2;
+			inputMesh.getVertexNormal(index, n0, MSpace::kWorld);
+			inputMesh.getVertexNormal(index + 1, n1, MSpace::kWorld);
+			inputMesh.getVertexNormal(index + 2, n2, MSpace::kWorld);
 
-    angle0 = angles[triVert[index]];
-    angle1 = angles[triVert[index] + 1];
-    angle2 = angles[triVert[index] + 2];
+			//Get w-vector
+			MVector w0,w1,w2;
 
+			w0 = angles[triangleVertices[index]];
+			w1 = angles[triangleVertices[index+1]];
+			w2 = angles[triangleVertices[index+2]];
 
-    // FELS�KNING
-    if (angles[triVert[index]].x != 0 || angles[triVert[index]].y != 0 || angles[triVert[index]].z != 0) {
-      cout << "INTE NOLLLLL!!! WOOHOOO!" << endl;
-    }
+			for (size_t j = 0; (j*stepSize) < (p0 - p2).length(); j++) {
+				p2p3 = (p2 - p3).normal();
+				p2p4 = (p2 - p4).normal();
 
-    //cout << "index: " << triVert[index] << endl << endl;
+				for (int k = 0; (k*stepSize) < (p4-p3).length(); k++) {
+					// Add nurbcurve at p3 + ((p4-p3).normalize() * k * stepSize)
+					p4p3 = (p4 - p3).normal();
+					MFloatVector interpolatedPosition = p3 + p4p3 * k * stepSize;
 
-    //cout << "x: " << positions[triVert[index]].x << "   y: " << positions[triVert[index]].y << "   z: " << positions[triVert[index]].z << endl;
-    //cout << "x: " << p0.x << "   y: " << p0.y << "   z: " << p0.z << endl;
+					////calculate interpolation values
+					float A0 = ((interpolatedPosition - p1) ^ (p2 - p1)).length()/2.0;
+					float A1 = ((interpolatedPosition - p0) ^ (p2 - p0)).length()/2.0;
+					float A2 = ((p1 - p0) ^ (interpolatedPosition - p0)).length()/2.0;
 
-    //if (positions[index].x == p0.x && positions[index].y == p0.y && positions[index].z == p0.z) {
-    //  cout << "samma position!!!" << endl;
-    //}
-    //else if (positions[index + 1].x == p0.x && positions[index + 1].y == p0.y && positions[index + 1].z == p0.z) {
-    //  cout << "kanske denna �r samma?" << endl;
-    //}
-    ////else if (positions[index + 2].x == p0.x && positions[index + 2].y == p0.y && positions[index + 2].z == p0.z) {
-    //  cout << "___SAME! >> 2" << endl;
-    //}
-    //else {
-    //  cout << "inte samma..." << endl;
-    //}
+					float weight0 = A0/A;
+					float weight1 = A1/A;
+					float weight2 = A2/A;
 
-    p2p0 = p2 - p0;
-    p2p0.normalize();
-    p2p1 = p2 - p1;
-    p2p1.normalize(); 
-    p0p1 = p0 - p1;
-    p0p1.normalize();
-    p1p0 = p1 - p0;
-    p1p0.normalize();
+					pointArray.append(interpolatedPosition);
 
-    p3 = p0 + (p2p0 * (stepSize/2)) + (p1p0 * (stepSize / 2));
-    p4 = p1 + (p2p1 * (stepSize / 2)) + (p0p1 * (stepSize / 2));
+					MFloatVector interpolatedNormal = ( weight0 * n0 +  weight1 * n1 +  weight2 * n2);
+					MFloatVector interpolatedW = ( weight2 * w0 +  weight2 * w1 +  weight2 * w2);
+					interpolatedNormal.normalize();
+					resultNormalArray.append(interpolatedNormal);
+					wArray.append(interpolatedW);
+				}
 
-    float A = ((p1 - p0 ) ^ (p2 - p0)).length()/2.0;
-    
-    //Get normals 
-    MVector n0,n1,n2;
-    inputMesh.getFaceVertexNormal(n,triVert[index],n0,MSpace::kWorld);	 
-    inputMesh.getFaceVertexNormal(n,triVert[index+1],n1,MSpace::kWorld);	 
-    inputMesh.getFaceVertexNormal(n,triVert[index+2],n2,MSpace::kWorld);
+				p3 += p2p0 * (stepSize);
+				p4 += p2p1 * (stepSize);
+			}
+		}
 
-    //Get w-vector
-    MVector w0,w1,w2;
-    w0 = angles[triVert[index]];
-    w1 = angles[triVert[index]];
-    w2 = angles[triVert[index]];
-
-
-    for (size_t j = 0; (j*stepSize) < (p0 - p2).length(); j++)
-    {
-
-      p2p3 = p2 - p3;
-      p2p3.normalize();
-      p2p4 = p2 - p4;
-      p2p4.normalize();
-
-
-      for (int k = 0; (k*stepSize) < (p4-p3).length(); k++) {
-        
-        // Add nurbcurve at p3 + ((p4-p3).normalize() * k * stepSize)
-        p4p3 = (p4 - p3);
-        p4p3.normalize();
-        resultVec = p3 + p4p3 * k * stepSize;
-        MFloatPoint pos = MFloatPoint(resultVec);
-        
-        //calculate interpolation values
-        float A0 = ((resultVec - p1) ^ (p2 - p1)).length()/2.0; // vikt fr�n p0
-        float A1 = ((resultVec - p0) ^ (p2 - p0)).length()/2.0; // vikt fr�n p1
-        float A2 = ((p1 - p0) ^ (resultVec - p0)).length()/2.0; // vikt fr�n p2
-
-        float v0 = A0/A;
-        float v1 = A1/A;
-        float v2 = A2/A;
-
-        pointArray.append(MFloatPoint(resultVec));
-
-
-        MFloatVector normalz = ( v0 * n0 +  v1 * n1 +  v2 * n2 );
-        MFloatVector w = ( v0 * w0 +  v1 * w1 +  v2 * w2 );
-        w = w0;
-
-
-        normalz.normalize();
-        resultNormalArray.append(MFloatPoint(normalz));
-        wArray.append(MFloatPoint(w));
-      }
-      
-      p3 += p2p0 * (stepSize);
-      p4 += p2p1 * (stepSize);
-
-    }
-
-  }
-  
-}
-  createHairCurve(pointArray, resultNormalArray, wArray, data);
-  nCurvesHandle.set((int)pointArray.length());
-  data.setClean(outputCurves);
-  data.setClean(numberOfCurves);
-  return status;
-  }
-
-  return status;
+		//for (unsigned int i=0; i < pointArray.length(); i++) {
+			//cout << i << endl;
+			//cout << "Position: " << pointArray[i] << endl;
+			//cout << "Normal: " << resultNormalArray[i] << endl;
+			//cout << "W: " << wArray[i] << endl;
+		//}
+		createHairCurve(pointArray, resultNormalArray, wArray, data);
+		nCurvesHandle.set((int)pointArray.length());
+		data.setClean(outputCurves);
+		data.setClean(numberOfCurves);
+	}
+	return status;
 }
