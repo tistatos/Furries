@@ -18,6 +18,17 @@ cmds.connectAttr('furrySpringNode1.springPositions', 'furryFurNode1.springPositi
 
 curves = cmds.getAttr('furryFurNode1.numberOfCurves')
 
-for i in range(0,100):
-    cmds.createNode("nurbsCurve")
-    cmds.connectAttr(('furryFurNode1.outputCurves[%i]' % i), ('curveShape%i.create' % (i+1)))
+makenormals = True;
+
+for i in range(0,200):
+    hair = cmds.createNode("nurbsCurve")
+    cmds.connectAttr(('furryFurNode1.outputCurves[%i]' % i), hair + '.create')
+    if makenormals:
+        normalPoints = []
+        for j in range(0,4):
+            point = omn.MVector(0, 0.1*j, 0)
+            normalPoints.append((point.x, point.y, point.z))
+        normal = cmds.curve(p=normalPoints, n="curveNormal1")
+        normalShape = maya.cmds.listRelatives(normal, children=True)[0]
+        cmds.connectAttr(('furrySpringNode1.springPositions[%i]' % i), normal+ '.translate')
+        cmds.connectAttr(('furrySpringNode1.springNormals[%i]' % i), normal+ '.rotate')
