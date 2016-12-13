@@ -256,7 +256,7 @@ MStatus FurriesSpringNode::calculateSprings(MDataBlock& data) {
 			//Equation 1
 			ami = wNormal^(g-as);
 			// Equation 2
-			//aa = ka * (-mMeshVelocity)^wNormal/rho;
+			aa = ka * (-mMeshVelocity)^wNormal/rho;
 			// Equation 3
 			as = -ks*wAngle;
 
