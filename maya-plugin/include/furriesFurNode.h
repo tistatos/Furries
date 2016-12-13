@@ -4,7 +4,8 @@
 
 #include <maya/MPxNode.h>
 #include <maya/MObject.h>
-
+#include <maya/MFloatPointArray.h>
+#include <maya/MFloatVectorArray.h>
 class FurriesFurNode : public MPxNode {
 public:
 
@@ -26,16 +27,16 @@ public:
 
   static MObject outputCurves;
   static MObject numberOfCurves;
-  static MStatus createHairCurve( MFloatPointArray positions,  MFloatPointArray normals, MFloatPointArray wArray, MDataBlock& data);
-  
+  static MStatus createHairCurve( MFloatPointArray positions,  MFloatVectorArray normals, MFloatVectorArray wArray, MDataBlock& data);
+
   static MString name;
-  
+
   static MObject meshInput;
   static MObject distanceBetweenStrands;
 
   static MObject springInput;
-  static MObject inputSpringPositions;
   static MObject inputSpringAngles;
+  static MObject inputSpringPositions;
   static MObject output;
   static MTypeId id;
 

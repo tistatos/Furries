@@ -289,7 +289,7 @@ MStatus FurriesSpringNode::calculateSprings(MDataBlock& data) {
       MFloatVector up(0, 1.0, 0);
       MQuaternion q(up, newWNormal);
       MFloatVector orientedNormal = q.asEulerRotation().asVector();
-      orientedNormal *= 180/3.14; //FIXME only rotational stuff
+      orientedNormal *= 180/3.14;
       outnormal.set3Double(orientedNormal.x, orientedNormal.y, orientedNormal.z);
 
     }
