@@ -300,6 +300,7 @@ MStatus FurriesFurNode::compute(const MPlug& plug, MDataBlock& data) {
 			//cout << "Normal: " << resultNormalArray[i] << endl;
 			//cout << "W: " << wArray[i] << endl;
 		//}
+
 		createHairCurve(pointArray, resultNormalArray, wArray, data);
 		nCurvesHandle.set((int)pointArray.length());
 		data.setClean(outputCurves);
