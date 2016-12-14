@@ -6,30 +6,31 @@
 #include "furriesFurNode.h"
 
 MStatus initializePlugin(MObject obj) {
-  MStatus status;
-  MFnPlugin plugin(obj, "FURRIES" , "0.1");
+	MStatus status;
+	MFnPlugin plugin(obj, "FURRIES" , "0.1");
 
-  plugin.registerNode(
-      FurriesSpringNode::name,
-      FurriesSpringNode::id,
-      FurriesSpringNode::creator,
-      FurriesSpringNode::initialize );
-  plugin.registerNode(
-    FurriesFurNode::name,
-    FurriesFurNode::id,
-    FurriesFurNode::creator,
-    FurriesFurNode::initialize
-  );
+	plugin.registerNode(
+			FurriesSpringNode::name,
+			FurriesSpringNode::id,
+			FurriesSpringNode::creator,
+			FurriesSpringNode::initialize );
+	plugin.registerNode(
+		FurriesFurNode::name,
+		FurriesFurNode::id,
+		FurriesFurNode::creator,
+		FurriesFurNode::initialize
+	);
 
-  //Register stuff here
-  return status;
+	//Register stuff here
+	return status;
 }
 
 MStatus uninitializePlugin(MObject obj) {
-  MStatus status;
-  MFnPlugin plugin(obj);
-  plugin.deregisterNode(FurriesSpringNode::id);
+	MStatus status;
+	MFnPlugin plugin(obj);
+	plugin.deregisterNode(FurriesSpringNode::id);
+	plugin.deregisterNode(FurriesFurNode::id);
 
-  //deregister stuff here
-  return status;
+	//deregister stuff here
+	return status;
 }

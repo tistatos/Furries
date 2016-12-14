@@ -33,6 +33,8 @@ public:
 
   static MObject meshInput;
   static MObject distanceBetweenStrands;
+  static MObject hairLength;
+	static MObject hairLengthXY;
 
   static MObject springInput;
   static MObject inputSpringAngles;
