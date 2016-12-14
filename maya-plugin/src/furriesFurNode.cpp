@@ -153,8 +153,9 @@ MStatus FurriesFurNode::createHairCurve( MFloatPointArray positions,  MFloatVect
 		for (int j = 0; j < 20; j++){
 			float u = j/20.0;
 			cvs.append(pos +
-								(u * z + (lxy * (1 - cos(u * theta)) / theta) * x +
+								(u * z*(1-lxy) + (lxy * (1 - cos(u * theta)) / theta) * x +
 								lxy * sin(u * theta) / theta * y) * length );
+			//cvs.append(pos + z * u);
 		}
 
 		MFnNurbsCurve curve;
