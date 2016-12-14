@@ -260,7 +260,7 @@ MStatus FurriesFurNode::compute(const MPlug& plug, MDataBlock& data) {
 			unsigned int strandsInTriangle = 100*A;
 			strandsInTriangle = 1;
 
-			for (size_t j = 0; (j*stepSize) < (p0 - p2).length(); j++) {
+			for (size_t j = 0; (j*stepSize + (stepSize/2)) < (p0 - p2).length(); j++) {
 				p2p3 = (p2 - p3).normal();
 				p2p4 = (p2 - p4).normal();
 
