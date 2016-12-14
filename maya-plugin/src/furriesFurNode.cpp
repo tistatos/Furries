@@ -98,6 +98,7 @@ MStatus FurriesFurNode::initialize() {
 	typedAttr.setReadable( true );
 	typedAttr.setWritable( false );
 	typedAttr.setUsesArrayDataBuilder( true );
+	typedAttr.setCached(false);
 	addAttribute(outputCurves);
 
 	FurriesFurNode::numberOfCurves = numericAttr.create( "numberOfCurves", "n", MFnNumericData::kInt, 0, &status );
@@ -156,12 +157,20 @@ MStatus FurriesFurNode::createHairCurve( MFloatPointArray positions,  MFloatVect
 		MVector y = (x ^ z).normal();
 		MPointArray cvs;
 
-		for (int j = 0; j < 20; j++){
-			float u = j/20.0;
-			cvs.append(pos +
-								(u * z*(1-lxy) + (lxy * (1 - cos(u * theta)) / theta) * x +
-								lxy * sin(u * theta) / theta * y) * length );
-			//cvs.append(pos + z * u);
+
+		if(theta >= 0.001) {
+			for (int j = 0; j < 20; j++){
+				float u = j/20.0;
+				cvs.append(pos +
+									(u * z*(1-lxy) + (lxy * (1 - cos(u * theta)) / theta) * x +
+									lxy * sin(u * theta) / theta * y) * length );
+			}
+		}
+		else {
+			for (int j = 0; j < 20; j++){
+				float u = j/20.0;
+				cvs.append(pos + normal*u*length);
+			}
 		}
 
 		MFnNurbsCurve curve;
