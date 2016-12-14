@@ -27,6 +27,7 @@ MTypeId FurriesFurNode::id(0x00002);
 
 MObject FurriesFurNode::meshInput;
 MObject FurriesFurNode::springInput;
+MObject FurriesFurNode::matrixInput;
 
 MObject FurriesFurNode::outputCurves;
 MObject FurriesFurNode::numberOfCurves;
@@ -59,14 +60,17 @@ MStatus FurriesFurNode::initialize() {
 	typedAttr.setWritable(true);
 	addAttribute(meshInput);
 
-	FurriesFurNode::distanceBetweenStrands = numericAttr.create("distanceBetweenStrands", "dist", MFnNumericData::kDouble, 0.05, &status);
+	FurriesFurNode::distanceBetweenStrands = numericAttr.create("distanceBetweenStrands", "dist", MFnNumericData::kDouble, 0.08, &status);
 	numericAttr.setWritable(true);
 	numericAttr.setMin(0.0001);
 	numericAttr.setMax(1.0000);
 	addAttribute(distanceBetweenStrands);
 
+	FurriesFurNode::matrixInput = matrixAttr.create("inputMatrix", "mat");
+	matrixAttr.setWritable(true);
+	addAttribute(matrixInput);
 
-	FurriesFurNode::hairLength = numericAttr.create("hairLength", "l", MFnNumericData::kDouble, 0.1, &status);
+	FurriesFurNode::hairLength = numericAttr.create("hairLength", "l", MFnNumericData::kDouble, 0.2, &status);
 	numericAttr.setWritable(true);
 	numericAttr.setMin(0.01);
 	numericAttr.setMax(2.0000);
@@ -124,6 +128,7 @@ MStatus FurriesFurNode::createHairCurve( MFloatPointArray positions,  MFloatVect
 	MDataHandle inputHairLengthXY = data.inputValue(hairLengthXY, &stat);
 	MArrayDataHandle outputArray = data.outputArrayValue(outputCurves,&stat);
 	MArrayDataBuilder builder(outputCurves, numCurves, &stat);
+	MTransformationMatrix m = data.inputValue(matrixInput).asMatrix();
 
 	for (int curveNum = 0; curveNum < numCurves; curveNum++) {
 
@@ -139,7 +144,8 @@ MStatus FurriesFurNode::createHairCurve( MFloatPointArray positions,  MFloatVect
 
 		MVector w = wArray[curveNum];
 		MPoint pos = positions[curveNum];
-		MVector normal = normals[curveNum];
+		pos = pos * m.asMatrix();
+		MVector normal = MPoint(normals[curveNum]) * m.asRotateMatrix();
 
 		MVector z = w.normal();
 		double theta = w.length();
@@ -227,9 +233,9 @@ MStatus FurriesFurNode::compute(const MPlug& plug, MDataBlock& data) {
 
 			int index = i;
 
-      p0 = pointList[triangleVertices[index]];
-      p1 = pointList[triangleVertices[index+1]];
-      p2 = pointList[triangleVertices[index+2]];
+			p0 = pointList[triangleVertices[index]];
+			p1 = pointList[triangleVertices[index+1]];
+			p2 = pointList[triangleVertices[index+2]];
 
 			p2p0 = (p2 - p0).normal();
 			p2p1 = (p2 - p1).normal();
@@ -270,29 +276,29 @@ MStatus FurriesFurNode::compute(const MPlug& plug, MDataBlock& data) {
 
 					MVector interpolatedPosition = p3 + p4p3 * k * stepSize;
 
-          //interpolatedPosition = p0;
+					//interpolatedPosition = p0;
 					// calculate interpolation values
-				  MVector v0 = p1-p0;
-          MVector v1 = p2-p0;
-          MVector v2 = interpolatedPosition - p0;
+					MVector v0 = p1-p0;
+					MVector v1 = p2-p0;
+					MVector v2 = interpolatedPosition - p0;
 
-          float d00 = v0*v0;
-          float d01 = v0*v1;
-          float d11 = v1*v1;
-          float d20 = v2*v0;
-          float d21 = v2*v1;
-          float denom = d00 * d11 - d01 * d01;
-          float v = (d11 * d20 - d01 * d21) / denom;
-          float w = (d00 * d21 - d01 * d20) / denom;
-          float u = 1.0f - v - w;
+					float d00 = v0*v0;
+					float d01 = v0*v1;
+					float d11 = v1*v1;
+					float d20 = v2*v0;
+					float d21 = v2*v1;
+					float denom = d00 * d11 - d01 * d01;
+					float v = (d11 * d20 - d01 * d21) / denom;
+					float w = (d00 * d21 - d01 * d20) / denom;
+					float u = 1.0f - v - w;
 
 					float weight0 = u;
 					float weight1 = v;
 					float weight2 = w;
 
-          if ( u > -0.001 && u <= 1.001 &&
-               v > -0.001 && v <= 1.001 &&
-               w > -0.001 && w <= 1.001){
+					if ( u > -0.001 && u <= 1.001 &&
+							 v > -0.001 && v <= 1.001 &&
+							 w > -0.001 && w <= 1.001){
 
 						MFloatVector interpolatedNormal = ( weight0 * n0 +  weight1 * n1 +  weight2 * n2);
 						MFloatVector interpolatedW = ( weight2 * w0 +  weight2 * w1 +  weight2 * w2);
@@ -307,7 +313,7 @@ MStatus FurriesFurNode::compute(const MPlug& plug, MDataBlock& data) {
 						resultNormalArray.append(interpolatedNormal);
 						wArray.append(interpolatedW);
 						}
-        }
+				}
 
 				p3 += p2p0 * (stepSize);
 				p4 += p2p1 * (stepSize);

@@ -34,6 +34,12 @@ MObject FurriesSpringNode::matrixInput;
 MObject FurriesSpringNode::timeInput;
 MObject FurriesSpringNode::gravityInput;
 MObject FurriesSpringNode::stiffnessInput;
+MObject FurriesSpringNode::hairDensityInput;
+MObject FurriesSpringNode::airResistanceInput;
+MObject FurriesSpringNode::maxThetaInput;
+MObject FurriesSpringNode::timestepInput;
+MObject FurriesSpringNode::epsilonInput;
+MObject FurriesSpringNode::dampingInput;
 
 MObject FurriesSpringNode::outputSpringPositions;
 MObject FurriesSpringNode::outputSpringNormals;
@@ -67,11 +73,43 @@ MStatus FurriesSpringNode::initialize() {
 	numericAttr.setWritable(true);
 	addAttribute(gravityInput);
 
-	FurriesSpringNode::timeInput = unitAttr.create("inputTime", "time",
-			MFnUnitAttribute::kTime);
+	FurriesSpringNode::timeInput = unitAttr.create("inputTime", "time", MFnUnitAttribute::kTime);
 	unitAttr.setWritable(true);
 	addAttribute(timeInput);
 
+	FurriesSpringNode::dampingInput = numericAttr.create("damping", "damp", MFnNumericData::kFloat, 0.95f);
+	numericAttr.setWritable(true);
+	numericAttr.setMax(1.0f);
+	numericAttr.setMin(0.01f);
+	addAttribute(dampingInput);
+
+	FurriesSpringNode::airResistanceInput = numericAttr.create("airResistance", "airR", MFnNumericData::kFloat, 0.5f);
+	numericAttr.setWritable(true);
+	numericAttr.setMax(1.0f);
+	numericAttr.setMin(0.01f);
+	addAttribute(airResistanceInput);
+
+	FurriesSpringNode::epsilonInput = numericAttr.create("epsilon", "epsilon", MFnNumericData::kFloat, 0.95f);
+	numericAttr.setWritable(true);
+	numericAttr.setMax(1.0f);
+	numericAttr.setMin(0.0f);
+	addAttribute(epsilonInput);
+
+	FurriesSpringNode::hairDensityInput = numericAttr.create("hairDensityInput", "density", MFnNumericData::kFloat, 1.0f);
+	numericAttr.setWritable(true);
+	numericAttr.setSoftMax(1.0f);
+	numericAttr.setMin(0.01f);
+	addAttribute(hairDensityInput);
+
+	FurriesSpringNode::maxThetaInput = numericAttr.create("hairTheta", "theta", MFnNumericData::kFloat, 90.0f);
+	numericAttr.setWritable(true);
+	numericAttr.setSoftMax(180.0f);
+	numericAttr.setMin(0.01f);
+	addAttribute(maxThetaInput);
+
+	FurriesSpringNode::timestepInput = numericAttr.create("timeStep", "timestep", MFnNumericData::kFloat, 0.05f);
+	numericAttr.setWritable(true);
+	addAttribute(timestepInput);
 	// Output
 	FurriesSpringNode::outputSpringNormals = numericAttr.create("springNormals", "normals", MFnNumericData::k3Double);
 	numericAttr.setWritable(false);
@@ -112,6 +150,17 @@ MStatus FurriesSpringNode::initialize() {
 	status = attributeAffects(gravityInput, outputSpringAngles);
 	status = attributeAffects(gravityInput, outputSpringNormals);
 
+	status = attributeAffects(dampingInput, outputSpringAngles);
+	status = attributeAffects(dampingInput, outputSpringNormals);
+
+	status = attributeAffects(airResistanceInput, outputSpringAngles);
+	status = attributeAffects(airResistanceInput, outputSpringNormals);
+
+	status = attributeAffects(hairDensityInput, outputSpringAngles);
+	status = attributeAffects(hairDensityInput, outputSpringNormals);
+
+	status = attributeAffects(maxThetaInput, outputSpringAngles);
+	status = attributeAffects(maxThetaInput, outputSpringNormals);
 	return MStatus::kSuccess;
 }
 
@@ -182,8 +231,16 @@ MStatus FurriesSpringNode::calculateSprings(MDataBlock& data) {
 	inputMesh.getTriangles(triangleCount, triangleVertices);
 	unsigned int springCount = pointList.length();
 
-	//gravity
+	// coefficients
 	MFloatVector g(0, -data.inputValue(gravityInput).asFloat(), 0);
+	float rho = data.inputValue(hairDensityInput).asFloat();
+	float ka = data.inputValue(airResistanceInput).asFloat();
+	float hi = (1.0f-data.inputValue(dampingInput).asFloat());
+
+	float epsilon = data.inputValue(epsilonInput).asFloat();
+	float ks = data.inputValue(stiffnessInput).asFloat();
+	float timestep = data.inputValue(timestepInput).asFloat();
+	float maxTheta = data.inputValue(maxThetaInput).asFloat() * (3.14f/180.0f);
 
 	//get Normal output
 	MArrayDataHandle outputNormals = data.outputArrayValue( FurriesSpringNode::outputSpringNormals);
@@ -198,9 +255,9 @@ MStatus FurriesSpringNode::calculateSprings(MDataBlock& data) {
 	MFloatVector currentPosition = matrix.getTranslation(MSpace::kWorld);
 	MFloatVector change = currentPosition-prevPosition;
 
-	MFloatVector acceleration = 2 * change / (FRAME_TIME_STEP*FRAME_TIME_STEP) - 2 * mMeshVelocity / FRAME_TIME_STEP;
+	MFloatVector acceleration = 2 * change / (timestep*timestep) - 2 * mMeshVelocity / timestep;
 
-	mMeshVelocity  = change / FRAME_TIME_STEP;
+	mMeshVelocity  = change / timestep;
 
 	for(unsigned int i = 0; i < triangleVertices.length(); i++) {
 		//calculate normal in world space
@@ -240,19 +297,11 @@ MStatus FurriesSpringNode::calculateSprings(MDataBlock& data) {
 			MFloatVector velocity = mSpringAngularVelocity[index];
 			MFloatVector wNormal = mSpringNormal[index];
 
-			float rho = 1.0f; //FIXME: hair density per unit
-			float ka = 1.0f; //FIXME: air-resistance coefficient
-			float kft = 0.9f;
-			float kmft = 0.4f;
-			float hi = 1 - fmax(kft+(kmft-kft),0);
-			hi = 0.1;
-
-			double const epsilon = 0.00;
-			float ks = data.inputValue(stiffnessInput).asFloat();
-
 			MFloatVector ami, aa, as;
 
+			//Surface acceleration, rotation doesn't contribute
 			as = acceleration;
+
 			//Equation 1
 			ami = wNormal^(g-as);
 			// Equation 2
@@ -264,15 +313,15 @@ MStatus FurriesSpringNode::calculateSprings(MDataBlock& data) {
 			MFloatVector ai = ami + aa + as;
 
 			//acceleration time step (Eq. 9)
-			velocity = velocity + ai*FRAME_TIME_STEP*hi;
+			velocity = velocity + ai*timestep*hi;
 
 			double angle = wAngle.length();
 
 			//Equation 11
-			if(angle < THETA_MAX * 0.5) {
+			if(angle < maxTheta * 0.5) {
 			}
-			else if (angle > THETA_MAX * 0.5 && angle < THETA_MAX) {
-				velocity = (1.0-(1.0+epsilon)*(angle/THETA_MAX))*velocity.normal();
+			else if (angle > maxTheta * 0.5 && angle < maxTheta) {
+				velocity = (1.0-(1.0+epsilon)*(angle/maxTheta))*velocity.normal();
 			}
 			else {
 				velocity = -epsilon*velocity.normal();
@@ -282,7 +331,7 @@ MStatus FurriesSpringNode::calculateSprings(MDataBlock& data) {
 			mSpringAngularVelocity[index] = velocity;
 
 			//update wAngle to the new angle and store it (Eq. 10)
-			MFloatVector newAngle = wAngle+velocity*FRAME_TIME_STEP;
+			MFloatVector newAngle = wAngle+velocity*timestep;
 			mSpringW[index] = newAngle;
 
 			//create a rotation from the new angle
