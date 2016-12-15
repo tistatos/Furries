@@ -24,6 +24,8 @@
 #include <maya/MFloatVectorArray.h>
 #include <maya/MArrayDataBuilder.h>
 
+#include <maya/MRenderUtil.h>
+
 #include "furriesSpringNode.h"
 
 MString FurriesSpringNode::name = "furrySpringNode";
@@ -77,7 +79,7 @@ MStatus FurriesSpringNode::initialize() {
 	unitAttr.setWritable(true);
 	addAttribute(timeInput);
 
-	FurriesSpringNode::dampingInput = numericAttr.create("damping", "damp", MFnNumericData::kFloat, 0.95f);
+	FurriesSpringNode::dampingInput = numericAttr.create("damping", "damp", MFnNumericData::kFloat, 0.99f);
 	numericAttr.setWritable(true);
 	numericAttr.setMax(1.0f);
 	numericAttr.setMin(0.01f);
@@ -89,7 +91,7 @@ MStatus FurriesSpringNode::initialize() {
 	numericAttr.setMin(0.01f);
 	addAttribute(airResistanceInput);
 
-	FurriesSpringNode::epsilonInput = numericAttr.create("epsilon", "epsilon", MFnNumericData::kFloat, 0.95f);
+	FurriesSpringNode::epsilonInput = numericAttr.create("epsilon", "epsilon", MFnNumericData::kFloat, 0.001f);
 	numericAttr.setWritable(true);
 	numericAttr.setMax(1.0f);
 	numericAttr.setMin(0.0f);
@@ -121,6 +123,7 @@ MStatus FurriesSpringNode::initialize() {
 	FurriesSpringNode::outputSpringAngles = numericAttr.create("springAngles", "angles", MFnNumericData::k3Double);
 	numericAttr.setWritable(false);
 	numericAttr.setReadable(true);
+	numericAttr.setCached(false);
 	numericAttr.setArray(true);
 	numericAttr.setUsesArrayDataBuilder(true);
 	addAttribute(outputSpringAngles);
@@ -139,8 +142,9 @@ MStatus FurriesSpringNode::initialize() {
 
 	status = attributeAffects(matrixInput, outputSpringPositions);
 	status = attributeAffects(matrixInput, outputSpringAngles);
-	status = attributeAffects(matrixInput, outputSpringPositions);
+	status = attributeAffects(matrixInput, outputSpringNormals);
 
+	status = attributeAffects(timeInput, outputSpringPositions);
 	status = attributeAffects(timeInput, outputSpringAngles);
 	status = attributeAffects(timeInput, outputSpringNormals);
 
@@ -212,6 +216,7 @@ MStatus FurriesSpringNode::calculateSprings(MDataBlock& data) {
 	//get current time
 	MTime currentTime = data.inputValue(timeInput, &status).asTime();
 
+	double delta = currentTime.value() - mLastTimeUpdate;
 	//mesh matrix
 	MTransformationMatrix matrix = data.inputValue(matrixInput, &status).asMatrix();
 	MMatrix m = matrix.asRotateMatrix();
@@ -239,7 +244,7 @@ MStatus FurriesSpringNode::calculateSprings(MDataBlock& data) {
 
 	float epsilon = data.inputValue(epsilonInput).asFloat();
 	float ks = data.inputValue(stiffnessInput).asFloat();
-	float timestep = data.inputValue(timestepInput).asFloat();
+	float timestep = data.inputValue(timestepInput).asFloat() * delta;
 	float maxTheta = data.inputValue(maxThetaInput).asFloat() * (3.14f/180.0f);
 
 	//get Normal output
@@ -259,6 +264,9 @@ MStatus FurriesSpringNode::calculateSprings(MDataBlock& data) {
 
 	mMeshVelocity  = change / timestep;
 
+	MQuaternion rotation;
+	rotation = matrix.asMatrix();
+
 	for(unsigned int i = 0; i < triangleVertices.length(); i++) {
 		//calculate normal in world space
 		int index = triangleVertices[i];
@@ -268,12 +276,12 @@ MStatus FurriesSpringNode::calculateSprings(MDataBlock& data) {
 			MDataHandle outnormal  = normalBuilder.addElement(index);
 			MDataHandle outAngle  = angleBuilder.addElement(index);
 
-			//FIXME USE THESE
-			//calculate rotation for normal direction and reset curves
-			outAngle.set3Double(0.0, 0.0, 0.0);
-
 			//reset velocities, w and modified normals
 			mSpringW[index] = MFloatVector::zero;
+
+			//Avoid Zero vector
+			MFloatVector fakeW = (normal^g).normal() * 0.0001;
+			outAngle.set3Double(fakeW.x , fakeW.y, fakeW.z );
 
 			mSpringNormal[index] = normal;
 			mSpringAngularVelocity[index] = MFloatVector::zero;
@@ -297,20 +305,20 @@ MStatus FurriesSpringNode::calculateSprings(MDataBlock& data) {
 			MFloatVector velocity = mSpringAngularVelocity[index];
 			MFloatVector wNormal = mSpringNormal[index];
 
-			MFloatVector ami, aa, as;
+			MFloatVector ami, as;
 
-			//Surface acceleration, rotation doesn't contribute
-			as = acceleration;
-
+			ami = as = MFloatVector::zero;
+			if(delta > 0) {
 			//Equation 1
-			ami = wNormal^(g-as);
-			// Equation 2
-			aa = ka * (-mMeshVelocity)^wNormal/rho;
+			ami = wNormal^(g-acceleration);
+
 			// Equation 3
 			as = -ks*wAngle;
-
+			}
+			else {
+			}
 			//sum all accelerations (Eq. 8)
-			MFloatVector ai = ami + aa + as;
+			MFloatVector ai = ami + as;
 
 			//acceleration time step (Eq. 9)
 			velocity = velocity + ai*timestep*hi;
@@ -318,10 +326,14 @@ MStatus FurriesSpringNode::calculateSprings(MDataBlock& data) {
 			double angle = wAngle.length();
 
 			//Equation 11
-			if(angle < maxTheta * 0.5) {
-			}
-			else if (angle > maxTheta * 0.5 && angle < maxTheta) {
-				velocity = (1.0-(1.0+epsilon)*(angle/maxTheta))*velocity.normal();
+			if(angle < maxTheta * 0.5) { }
+			else if (angle > (maxTheta / 2.0f) && angle <= maxTheta) {
+
+				if ((wAngle + velocity*timestep).length() > angle) {
+					//only scale if we are increasing angle
+					double scaleFactor = 1.0 - (1+epsilon) * (angle / maxTheta);
+					velocity = scaleFactor * velocity.normal();
+				}
 			}
 			else {
 				velocity = -epsilon*velocity.normal();
@@ -332,15 +344,18 @@ MStatus FurriesSpringNode::calculateSprings(MDataBlock& data) {
 
 			//update wAngle to the new angle and store it (Eq. 10)
 			MFloatVector newAngle = wAngle+velocity*timestep;
+
 			mSpringW[index] = newAngle;
 
 			//create a rotation from the new angle
 			MTransformationMatrix angleWmatrix;
 			angleWmatrix.setToRotationAxis(newAngle.normal(), newAngle.length());
-			MFloatVector newWNormal = MPoint(normal) * angleWmatrix.asRotateMatrix();
+
+			MFloatVector newWNormal = MPoint(normal) * rotation *  angleWmatrix.asRotateMatrix();
 			mSpringNormal[index] = newWNormal.normal();
 
 			outAngle.set3Double(newAngle.x, newAngle.y, newAngle.z);
+
 
 			//FIXME VISUAL NORMAL OUTPUT DONT USE
 			MFloatVector up(0, 1.0, 0);
@@ -350,23 +365,25 @@ MStatus FurriesSpringNode::calculateSprings(MDataBlock& data) {
 			outnormal.set3Double(orientedNormal.x, orientedNormal.y, orientedNormal.z);
 
 		}
-		outputNormals.set(normalBuilder);
-		outputAngles.set(angleBuilder);
-		}
+	}
 
+	mLastTimeUpdate = currentTime.value();
+
+	outputNormals.set(normalBuilder);
+	outputAngles.set(angleBuilder);
 	data.setClean(outputSpringNormals);
 	data.setClean(outputSpringAngles);
 	return status;
 }
 
 MStatus FurriesSpringNode::compute(const MPlug& plug, MDataBlock& data) {
-
 	MStatus status = MStatus::kSuccess;
 
 	MTime currentTime = data.inputValue(timeInput, &status).asTime();
 
 	if(plug == outputSpringPositions) {
 		status = calculatePositions(data);
+		data.setClean(outputSpringPositions);
 	}
 
 	if(plug == outputSpringAngles || plug == outputSpringNormals) {

@@ -55,12 +55,14 @@ MStatus FurriesFurNode::initialize() {
 	MFnNumericAttribute numericAttr;
 	MFnUnitAttribute unitAttr;
 
+	FurriesFurNode::numberOfCurves = numericAttr.create( "numberOfCurves", "n", MFnNumericData::kInt, 0, &status );
+	addAttribute(numberOfCurves);
 	//  Inputs
 	FurriesFurNode::meshInput = typedAttr.create("inputMesh", "in", MFnData::kMesh, &status);
 	typedAttr.setWritable(true);
 	addAttribute(meshInput);
 
-	FurriesFurNode::distanceBetweenStrands = numericAttr.create("distanceBetweenStrands", "dist", MFnNumericData::kDouble, 0.08, &status);
+	FurriesFurNode::distanceBetweenStrands = numericAttr.create("distanceBetweenStrands", "dist", MFnNumericData::kDouble, 0.12, &status);
 	numericAttr.setWritable(true);
 	numericAttr.setMin(0.0001);
 	numericAttr.setMax(1.0000);
@@ -101,8 +103,6 @@ MStatus FurriesFurNode::initialize() {
 	typedAttr.setCached(false);
 	addAttribute(outputCurves);
 
-	FurriesFurNode::numberOfCurves = numericAttr.create( "numberOfCurves", "n", MFnNumericData::kInt, 0, &status );
-	addAttribute(numberOfCurves);
 
 	//Affecting attributes
 	status = attributeAffects(meshInput, outputCurves);
@@ -158,19 +158,11 @@ MStatus FurriesFurNode::createHairCurve( MFloatPointArray positions,  MFloatVect
 		MPointArray cvs;
 
 
-		if(theta >= 0.001) {
-			for (int j = 0; j < 20; j++){
-				float u = j/20.0;
-				cvs.append(pos +
-									(u * z*(1-lxy) + (lxy * (1 - cos(u * theta)) / theta) * x +
-									lxy * sin(u * theta) / theta * y) * length );
-			}
-		}
-		else {
-			for (int j = 0; j < 20; j++){
-				float u = j/20.0;
-				cvs.append(pos + normal*u*length);
-			}
+		for (int j = 0; j < 20; j++){
+			float u = j/20.0;
+			cvs.append(pos +
+								(u * z*(1-lxy) + (lxy * (1 - cos(u * theta)) / theta) * x +
+								lxy * sin(u * theta) / theta * y) * length );
 		}
 
 		MFnNurbsCurve curve;

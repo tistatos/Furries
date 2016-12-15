@@ -52,6 +52,7 @@ public:
 	static MTypeId id;
 
 private:
+	double mLastTimeUpdate;
 	MTransformationMatrix mPrevMatrix;
 	MFloatVector mMeshAcceleration;
 	MFloatVector mMeshVelocity;
